@@ -68,7 +68,8 @@ namespace FabrikaBackend.Controllers
             return Ok(new { mesaj = "Müşteri başarıyla güncellendi." });
         }
 
-        // 5. MÜŞTERİ SİL
+// ... (Dosyanın üst kısımları aynı kalacak, sadece en altı veya tamamını değiştirebilirsin)
+
         [HttpDelete("musteri-kaydi-sil/{id}")]
         public async Task<IActionResult> DeleteCustomer(int id)
         {
@@ -83,7 +84,8 @@ namespace FabrikaBackend.Controllers
 
         private bool CustomerExists(int id)
         {
-            return _context.Customers.Any(e => e.Id == id);
+            // DÜZELTİLDİ: = yerine == kullanıldı
+            return _context.Customers.Any(e => e.Id == id); 
         }
     }
 }
