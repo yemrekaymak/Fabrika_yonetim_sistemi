@@ -6,7 +6,7 @@ namespace FabrikaBackend.Models;
 public class Stock
 {
     [Key] // Veritabanı için kimlik (Primary Key)
-    [JsonPropertyName("id")]
+    [JsonPropertyName("Id")]
     public string Code { get; set; } = string.Empty; 
 
     [JsonPropertyName("ad")]
