@@ -1,12 +1,10 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# Proje dosyasını tam adıyla kopyalayalım (Hata payını siler)
-COPY ["FabrikaBackend.csproj", "./"]
-RUN dotnet restore "FabrikaBackend.csproj"
-
-# Kalan her şeyi kopyala
+# Mevcut dizindeki her şeyi kopyala
 COPY . .
+
+# Restore ve Publish işlemlerini tek satırda yapalım (Dosya yolu hatasını önler)
 RUN dotnet publish "FabrikaBackend.csproj" -c Release -o /app/out
 
 # Runtime aşaması
