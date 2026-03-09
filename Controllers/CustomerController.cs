@@ -83,7 +83,7 @@ namespace FabrikaBackend.Controllers
 
         private bool CustomerExists(int id)
         {
-            return _context.Customers.Any(e => e.Id = id);
+            return _context.Customers.Any(e => e.Id == id);
         }
     }
 }
