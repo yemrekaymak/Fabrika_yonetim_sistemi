@@ -16,21 +16,45 @@ public class PersonnelController : ControllerBase
         _context = context;
     }
 
-    [HttpGet]
+    // 1. TÜM PERSONEL LİSTESİNİ GETİR
+    [HttpGet("tum-personel-listesi")]
     public async Task<ActionResult<IEnumerable<Personnel>>> GetPersonnels()
     {
         return await _context.Personnels.ToListAsync();
     }
 
+    // 2. ID İLE PERSONEL DETAYLARINI GETİR (TC, Maaş, Performans vb.)
+    [HttpGet("personel-detay-getir/{id}")]
+    public async Task<ActionResult<Personnel>> GetPersonnelById(int id)
+    {
+        var personnel = await _context.Personnels.FindAsync(id);
 
+        if (personnel == null)
+        {
+            return NotFound(new { mesaj = $"{id} ID'li personel kaydı bulunamadı." });
+        }
 
-    // GÜNCELLEME (PUT)
-    [HttpPut("{id}")]
+        return personnel;
+    }
+
+    // 3. YENİ PERSONEL KAYDI OLUŞTUR
+    [HttpPost("yeni-personel-ekle")]
+    public async Task<ActionResult<Personnel>> PostPersonnel(Personnel personnel)
+    {
+        _context.Personnels.Add(personnel);
+        await _context.SaveChangesAsync();
+        
+        // Ok yerine CreatedAtAction kullanmak daha profesyoneldir
+        return CreatedAtAction(nameof(GetPersonnelById), new { id = personnel.Id }, personnel);
+    }
+
+    // 4. PERSONEL BİLGİLERİNİ GÜNCELLE
+    [HttpPut("personel-bilgisi-guncelle/{id}")]
     public async Task<IActionResult> PutPersonnel(int id, Personnel personnel)
     {
         if (id != personnel.Id)
         {
-            return BadRequest("ID'ler uyuşmuyor!");
+            return BadRequest(new { mesaj = "ID'ler uyuşmuyor!" });
         }
 
         _context.Entry(personnel).State = EntityState.Modified;
@@ -43,7 +67,7 @@ public class PersonnelController : ControllerBase
         {
             if (!_context.Personnels.Any(e => e.Id == id))
             {
-                return NotFound();
+                return NotFound(new { mesaj = "Güncellenecek personel bulunamadı." });
             }
             else
             {
@@ -51,26 +75,22 @@ public class PersonnelController : ControllerBase
             }
         }
 
-        return NoContent();
+        return Ok(new { mesaj = "Personel bilgileri başarıyla güncellendi.", guncellenenId = id });
     }
 
-
-    [HttpPost]
-    public async Task<ActionResult<Personnel>> PostPersonnel(Personnel personnel)
-    {
-        _context.Personnels.Add(personnel);
-        await _context.SaveChangesAsync();
-        return Ok(personnel);
-    }
-
-    [HttpDelete("{id}")]
+    // 5. PERSONEL KAYDINI SİSTEMDEN SİL
+    [HttpDelete("personel-kaydi-sil/{id}")]
     public async Task<IActionResult> DeletePersonnel(int id)
     {
         var personnel = await _context.Personnels.FindAsync(id);
-        if (personnel == null) return NotFound();
+        if (personnel == null) 
+        {
+            return NotFound(new { mesaj = "Silinecek personel bulunamadı." });
+        }
 
         _context.Personnels.Remove(personnel);
         await _context.SaveChangesAsync();
-        return NoContent();
+        
+        return Ok(new { mesaj = "Personel kaydı başarıyla silindi." });
     }
 }

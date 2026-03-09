@@ -5,7 +5,7 @@ using FabrikaBackend.Models;
 
 namespace FabrikaBackend.Controllers;
 
-[Route("api/products")] // Dokümana uygun rota
+[Route("api/[controller]")]
 [ApiController]
 public class ProductController : ControllerBase
 {
@@ -16,32 +16,43 @@ public class ProductController : ControllerBase
         _context = context;
     }
 
-    [HttpGet]
+    // 1. TÜM ÜRÜN LİSTESİNİ GETİR
+    [HttpGet("tum-urun-listesi")]
     public async Task<ActionResult<IEnumerable<Product>>> GetProducts()
     {
         return await _context.Products.ToListAsync();
     }
 
-    [HttpGet("{id}")]
-    public async Task<ActionResult<Product>> GetProduct(int id) // String olan id'yi int yaptık
+    // 2. ID İLE TEKİL ÜRÜN DETAYI GETİR (Kapasite, Maliyet vb.)
+    [HttpGet("urun-detay-getir/{id}")]
+    public async Task<ActionResult<Product>> GetProduct(int id)
     {
         var product = await _context.Products.FindAsync(id);
-        if (product == null) return NotFound("Product not found.");
+        if (product == null) 
+        {
+            return NotFound(new { mesaj = $"{id} ID'li ürün sistemde bulunamadı." });
+        }
         return product;
     }
 
-    [HttpPost]
+    // 3. YENİ ÜRÜN TANIMLA (Üretim Kapasitesi Dahil)
+    [HttpPost("yeni-urun-tanimla")]
     public async Task<ActionResult<Product>> CreateProduct(Product product)
     {
         _context.Products.Add(product);
         await _context.SaveChangesAsync();
+        
         return CreatedAtAction(nameof(GetProduct), new { id = product.Id }, product);
     }
 
-    [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateProduct(int id, Product product) // String olan id'yi int yaptık
+    // 4. ÜRÜN BİLGİLERİNİ GÜNCELLE
+    [HttpPut("urun-bilgisi-guncelle/{id}")]
+    public async Task<IActionResult> UpdateProduct(int id, Product product)
     {
-        if (id != product.Id) return BadRequest("ID mismatch.");
+        if (id != product.Id) 
+        {
+            return BadRequest(new { mesaj = "ID uyuşmazlığı saptandı!" });
+        }
 
         _context.Entry(product).State = EntityState.Modified;
 
@@ -51,22 +62,29 @@ public class ProductController : ControllerBase
         }
         catch (DbUpdateConcurrencyException)
         {
-            if (!_context.Products.Any(e => e.Id == id)) return NotFound("Product not found.");
+            if (!_context.Products.Any(e => e.Id == id)) 
+            {
+                return NotFound(new { mesaj = "Güncellenecek ürün bulunamadı." });
+            }
             else throw;
         }
 
-        return NoContent();
+        return Ok(new { mesaj = "Ürün bilgileri başarıyla güncellendi.", guncellenenId = id });
     }
 
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteProduct(int id) // String olan id'yi int yaptık
+    // 5. ÜRÜNÜ SİSTEMDEN KALDIR
+    [HttpDelete("urun-kaydi-sil/{id}")]
+    public async Task<IActionResult> DeleteProduct(int id)
     {
         var product = await _context.Products.FindAsync(id);
-        if (product == null) return NotFound("Product not found.");
+        if (product == null) 
+        {
+            return NotFound(new { mesaj = "Silinecek ürün bulunamadı." });
+        }
 
         _context.Products.Remove(product);
         await _context.SaveChangesAsync();
 
-        return NoContent();
+        return Ok(new { mesaj = "Ürün kaydı başarıyla silindi." });
     }
 }
