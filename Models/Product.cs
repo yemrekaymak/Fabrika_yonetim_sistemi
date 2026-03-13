@@ -41,4 +41,8 @@ public class Product
 
     [JsonPropertyName("fiyat")]
     public double Fiyat { get; set; }
+
+    // Hangi firmaya ait ürün
+    [JsonPropertyName("companyId")]
+    public int CompanyId { get; set; }
 }

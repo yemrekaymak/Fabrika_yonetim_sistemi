@@ -16,9 +16,10 @@ public class AppDbContext : DbContext
     public DbSet<Customer> Customers { get; set; }
     public DbSet<Expense> Expenses { get; set; }
     public DbSet<Income> Incomes { get; set; }
+    public DbSet<Company> Companies { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-        
     }
 }

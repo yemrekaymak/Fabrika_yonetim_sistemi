@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using FabrikaBackend.Data;
 using FabrikaBackend.Models;
 using System.Net.Http.Json;
+using Microsoft.AspNetCore.Authorization;
 
 namespace FabrikaBackend.Controllers;
 
@@ -20,6 +21,7 @@ public class OrderStatusUpdateRequest
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class OrderController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -31,11 +33,17 @@ public class OrderController : ControllerBase
         _httpClient = httpClient;
     }
 
+    private int GetCompanyId() =>
+        int.Parse(User.FindFirst("company_id")!.Value);
+
     // 1. TÜM SİPARİŞLERİ LİSTELE
     [HttpGet("tum-siparis-listesi")]
     public async Task<ActionResult<IEnumerable<Orders>>> GetOrders([FromQuery] string? status)
     {
-        var query = _context.Orders.AsQueryable();
+        var companyId = GetCompanyId();
+        var query = _context.Orders
+            .Where(o => o.CompanyId == companyId)
+            .AsQueryable();
         
         if (!string.IsNullOrEmpty(status))
         {
@@ -49,7 +57,9 @@ public class OrderController : ControllerBase
     [HttpGet("siparis-detay-getir/{id}")]
     public async Task<ActionResult<Orders>> GetOrder(int id)
     {
-        var order = await _context.Orders.FindAsync(id);
+        var companyId = GetCompanyId();
+        var order = await _context.Orders
+            .FirstOrDefaultAsync(o => o.Id == id && o.CompanyId == companyId);
         if (order == null) return NotFound(new { mesaj = "Sipariş bulunamadı." });
         return order;
     }
@@ -58,13 +68,16 @@ public class OrderController : ControllerBase
     [HttpPost("yeni-siparis-olustur")]
     public async Task<ActionResult<Orders>> CreateOrder(OrderCreateRequest request)
     {
+        var companyId = GetCompanyId();
+
         var newOrder = new Orders
         {
             MusteriAdi = request.MusteriAdi,
             UrunAdi = request.UrunAdi,
             Miktar = request.Miktar,
             Status = "pending",
-            CreatedAt = DateTime.UtcNow // OlusturulmaTarihi -> CreatedAt yaptık
+            CreatedAt = DateTime.UtcNow, // OlusturulmaTarihi -> CreatedAt yaptık
+            CompanyId = companyId
         };
 
         _context.Orders.Add(newOrder);
@@ -92,7 +105,9 @@ public class OrderController : ControllerBase
     [HttpPatch("siparis-durumu-guncelle/{id}")]
     public async Task<IActionResult> UpdateOrderStatus(int id, [FromBody] OrderStatusUpdateRequest request)
     {
-        var order = await _context.Orders.FindAsync(id);
+        var companyId = GetCompanyId();
+        var order = await _context.Orders
+            .FirstOrDefaultAsync(o => o.Id == id && o.CompanyId == companyId);
         if (order == null) return NotFound(new { mesaj = "Sipariş bulunamadı." });
 
         // İstersen buradaki değerleri de "beklemede" yerine "pending" vb. yapabilirsin, şimdilik bunları korudum.
@@ -112,8 +127,19 @@ public class OrderController : ControllerBase
     [HttpPut("siparis-tum-verileri-duzelt/{id}")]
     public async Task<IActionResult> UpdateOrder(int id, Orders order)
     {
+        var companyId = GetCompanyId();
         if (id != order.Id) return BadRequest(new { mesaj = "ID uyuşmazlığı!" });
 
+        var existing = await _context.Orders
+            .AsNoTracking()
+            .FirstOrDefaultAsync(o => o.Id == id && o.CompanyId == companyId);
+
+        if (existing == null)
+        {
+            return NotFound(new { mesaj = "Güncellenecek sipariş bulunamadı." });
+        }
+
+        order.CompanyId = companyId;
         _context.Entry(order).State = EntityState.Modified;
         await _context.SaveChangesAsync();
 
@@ -124,7 +150,9 @@ public class OrderController : ControllerBase
     [HttpDelete("siparis-kaydi-sil/{id}")]
     public async Task<IActionResult> DeleteOrder(int id)
     {
-        var order = await _context.Orders.FindAsync(id);
+        var companyId = GetCompanyId();
+        var order = await _context.Orders
+            .FirstOrDefaultAsync(o => o.Id == id && o.CompanyId == companyId);
         if (order == null) return NotFound(new { mesaj = "Silinecek sipariş bulunamadı." });
 
         _context.Orders.Remove(order);

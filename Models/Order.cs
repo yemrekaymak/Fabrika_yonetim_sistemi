@@ -26,4 +26,8 @@ public class Orders
 
     [JsonPropertyName("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    // Hangi firmaya ait sipariş
+    [JsonPropertyName("companyId")]
+    public int CompanyId { get; set; }
 }

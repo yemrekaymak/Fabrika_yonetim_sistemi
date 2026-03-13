@@ -71,6 +71,9 @@ builder.Services.AddHttpClient();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// Arka plan üretim takip servisini sisteme ekle
+builder.Services.AddHostedService<ProductionTrackerService>();
+
 // --- 2. UYGULAMA İNŞA ET (Build) ---
 var app = builder.Build();
 

@@ -21,6 +21,10 @@ public class Expense
 
     [JsonPropertyName("tarih")]
     public DateTime Tarih { get; set; } = DateTime.Now;
+
+    // Hangi firmaya ait gider
+    [JsonPropertyName("companyId")]
+    public int CompanyId { get; set; }
 }
 
 // --- GELİRLER (Sadece Satış Odaklı) ---
@@ -36,4 +40,8 @@ public class Income
 
     [JsonPropertyName("tarih")]
     public DateTime Tarih { get; set; } = DateTime.Now;
+
+    // Hangi firmaya ait gelir
+    [JsonPropertyName("companyId")]
+    public int CompanyId { get; set; }
 }

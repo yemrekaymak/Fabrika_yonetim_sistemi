@@ -25,4 +25,8 @@ public class Customer
 
     [JsonPropertyName("kayitTarihi")]
     public DateTime CreatedAt { get; set; } = DateTime.Now;
+
+    // Hangi firmaya ait müşteri
+    [JsonPropertyName("companyId")]
+    public int CompanyId { get; set; }
 }

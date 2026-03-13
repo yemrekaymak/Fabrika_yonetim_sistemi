@@ -2,11 +2,13 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using FabrikaBackend.Models;
 using FabrikaBackend.Data;
+using Microsoft.AspNetCore.Authorization;
 
 namespace FabrikaBackend.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class MachineController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -16,18 +18,26 @@ namespace FabrikaBackend.Controllers
             _context = context;
         }
 
+        private int GetCompanyId() =>
+            int.Parse(User.FindFirst("company_id")!.Value);
+
         // 1. TÜM MAKİNELERİ LİSTELE
         [HttpGet("tum-makine-listesi")]
         public async Task<ActionResult<IEnumerable<Machine>>> GetMachines()
         {
-            return await _context.Machines.ToListAsync();
+            var companyId = GetCompanyId();
+            return await _context.Machines
+                .Where(m => m.CompanyId == companyId)
+                .ToListAsync();
         }
 
         // 2. ID'YE GÖRE MAKİNE DETAYI GETİR (İstediğin tekil listeleme)
         [HttpGet("makine-detay-getir/{id}")]
         public async Task<ActionResult<Machine>> GetMachineById(int id)
         {
-            var machine = await _context.Machines.FindAsync(id);
+            var companyId = GetCompanyId();
+            var machine = await _context.Machines
+                .FirstOrDefaultAsync(m => m.Id == id && m.CompanyId == companyId);
 
             if (machine == null)
             {
@@ -41,6 +51,9 @@ namespace FabrikaBackend.Controllers
         [HttpPost("yeni-makine-ekle")]
         public async Task<ActionResult<Machine>> CreateMachine(Machine machine)
         {
+            var companyId = GetCompanyId();
+            machine.CompanyId = companyId;
+
             _context.Machines.Add(machine);
             await _context.SaveChangesAsync();
 
@@ -51,8 +64,19 @@ namespace FabrikaBackend.Controllers
         [HttpPut("makine-bilgisi-guncelle/{id}")]
         public async Task<IActionResult> UpdateMachine(int id, Machine machine)
         {
+            var companyId = GetCompanyId();
             if (id != machine.Id) return BadRequest(new { mesaj = "ID uyuşmazlığı!" });
 
+            var existing = await _context.Machines
+                .AsNoTracking()
+                .FirstOrDefaultAsync(m => m.Id == id && m.CompanyId == companyId);
+
+            if (existing == null)
+            {
+                return NotFound(new { mesaj = "Güncellenecek makine bulunamadı." });
+            }
+
+            machine.CompanyId = companyId;
             _context.Entry(machine).State = EntityState.Modified;
             await _context.SaveChangesAsync();
 
@@ -63,7 +87,9 @@ namespace FabrikaBackend.Controllers
         [HttpDelete("makine-kaydi-sil/{id}")]
         public async Task<IActionResult> DeleteMachine(int id)
         {
-            var machine = await _context.Machines.FindAsync(id);
+            var companyId = GetCompanyId();
+            var machine = await _context.Machines
+                .FirstOrDefaultAsync(m => m.Id == id && m.CompanyId == companyId);
             if (machine == null) return NotFound();
 
             _context.Machines.Remove(machine);

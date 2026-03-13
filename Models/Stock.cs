@@ -32,4 +32,8 @@ public class Stock
 
     [JsonPropertyName("durum")]
     public string Status { get; set; } = string.Empty;
+
+    // Hangi firmaya ait stok
+    [JsonPropertyName("companyId")]
+    public int CompanyId { get; set; }
 }

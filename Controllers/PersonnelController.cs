@@ -2,11 +2,13 @@ using Microsoft.AspNetCore.Mvc;
 using FabrikaBackend.Data;
 using FabrikaBackend.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 
 namespace FabrikaBackend.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class PersonnelController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -16,18 +18,26 @@ public class PersonnelController : ControllerBase
         _context = context;
     }
 
+    private int GetCompanyId() =>
+        int.Parse(User.FindFirst("company_id")!.Value);
+
     // 1. TÜM PERSONEL LİSTESİNİ GETİR
     [HttpGet("tum-personel-listesi")]
     public async Task<ActionResult<IEnumerable<Personnel>>> GetPersonnels()
     {
-        return await _context.Personnels.ToListAsync();
+        var companyId = GetCompanyId();
+        return await _context.Personnels
+            .Where(p => p.CompanyId == companyId)
+            .ToListAsync();
     }
 
     // 2. ID İLE PERSONEL DETAYLARINI GETİR (TC, Maaş, Performans vb.)
     [HttpGet("personel-detay-getir/{id}")]
     public async Task<ActionResult<Personnel>> GetPersonnelById(int id)
     {
-        var personnel = await _context.Personnels.FindAsync(id);
+        var companyId = GetCompanyId();
+        var personnel = await _context.Personnels
+            .FirstOrDefaultAsync(p => p.Id == id && p.CompanyId == companyId);
 
         if (personnel == null)
         {
@@ -41,6 +51,9 @@ public class PersonnelController : ControllerBase
     [HttpPost("yeni-personel-ekle")]
     public async Task<ActionResult<Personnel>> PostPersonnel(Personnel personnel)
     {
+        var companyId = GetCompanyId();
+        personnel.CompanyId = companyId;
+
         _context.Personnels.Add(personnel);
         await _context.SaveChangesAsync();
         
@@ -52,11 +65,22 @@ public class PersonnelController : ControllerBase
     [HttpPut("personel-bilgisi-guncelle/{id}")]
     public async Task<IActionResult> PutPersonnel(int id, Personnel personnel)
     {
+        var companyId = GetCompanyId();
         if (id != personnel.Id)
         {
             return BadRequest(new { mesaj = "ID'ler uyuşmuyor!" });
         }
 
+        var existing = await _context.Personnels
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Id == id && p.CompanyId == companyId);
+
+        if (existing == null)
+        {
+            return NotFound(new { mesaj = "Güncellenecek personel bulunamadı." });
+        }
+
+        personnel.CompanyId = companyId;
         _context.Entry(personnel).State = EntityState.Modified;
 
         try
@@ -82,7 +106,9 @@ public class PersonnelController : ControllerBase
     [HttpDelete("personel-kaydi-sil/{id}")]
     public async Task<IActionResult> DeletePersonnel(int id)
     {
-        var personnel = await _context.Personnels.FindAsync(id);
+        var companyId = GetCompanyId();
+        var personnel = await _context.Personnels
+            .FirstOrDefaultAsync(p => p.Id == id && p.CompanyId == companyId);
         if (personnel == null) 
         {
             return NotFound(new { mesaj = "Silinecek personel bulunamadı." });

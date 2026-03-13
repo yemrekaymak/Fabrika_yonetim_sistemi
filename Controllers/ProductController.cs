@@ -2,11 +2,13 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using FabrikaBackend.Data;
 using FabrikaBackend.Models;
+using Microsoft.AspNetCore.Authorization;
 
 namespace FabrikaBackend.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class ProductController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -16,11 +18,17 @@ public class ProductController : ControllerBase
         _context = context;
     }
 
+    private int GetCompanyId() =>
+        int.Parse(User.FindFirst("company_id")!.Value);
+
     // 1. TÜM ÜRÜN LİSTESİNİ GETİR (Frontend Stok Tablosu İçin Optimize Edildi)
     [HttpGet("tum-urun-listesi")]
     public async Task<ActionResult<IEnumerable<object>>> GetProducts()
     {
-        var products = await _context.Products.ToListAsync();
+        var companyId = GetCompanyId();
+        var products = await _context.Products
+            .Where(p => p.CompanyId == companyId)
+            .ToListAsync();
 
         // Arkadaşının mappers.js dosyasındaki beklentilerine göre veriyi şekillendiriyoruz
         var response = products.Select(p => new
@@ -47,7 +55,9 @@ public class ProductController : ControllerBase
     [HttpGet("urun-detay-getir/{id}")]
     public async Task<ActionResult<Product>> GetProduct(int id)
     {
-        var product = await _context.Products.FindAsync(id);
+        var companyId = GetCompanyId();
+        var product = await _context.Products
+            .FirstOrDefaultAsync(p => p.Id == id && p.CompanyId == companyId);
         if (product == null) 
         {
             return NotFound(new { mesaj = $"{id} ID'li ürün sistemde bulunamadı." });
@@ -59,7 +69,9 @@ public class ProductController : ControllerBase
     [HttpPost("yeni-urun-tanimla")]
     public async Task<ActionResult<Product>> CreateProduct(Product product)
     {
-        // Eğer miktar girilmediyse 0 olarak başlasın ama veritabanına kaydedilsin
+        var companyId = GetCompanyId();
+        product.CompanyId = companyId;
+
         _context.Products.Add(product);
         await _context.SaveChangesAsync();
         
@@ -70,11 +82,22 @@ public class ProductController : ControllerBase
     [HttpPut("urun-bilgisi-guncelle/{id}")]
     public async Task<IActionResult> UpdateProduct(int id, Product product)
     {
+        var companyId = GetCompanyId();
         if (id != product.Id) 
         {
             return BadRequest(new { mesaj = "ID uyuşmazlığı saptandı!" });
         }
 
+        var existing = await _context.Products
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Id == id && p.CompanyId == companyId);
+
+        if (existing == null)
+        {
+            return NotFound(new { mesaj = "Güncellenecek ürün bulunamadı." });
+        }
+
+        product.CompanyId = companyId;
         _context.Entry(product).State = EntityState.Modified;
 
         try
@@ -97,7 +120,9 @@ public class ProductController : ControllerBase
     [HttpDelete("urun-kaydi-sil/{id}")]
     public async Task<IActionResult> DeleteProduct(int id)
     {
-        var product = await _context.Products.FindAsync(id);
+        var companyId = GetCompanyId();
+        var product = await _context.Products
+            .FirstOrDefaultAsync(p => p.Id == id && p.CompanyId == companyId);
         if (product == null) 
         {
             return NotFound(new { mesaj = "Silinecek ürün bulunamadı." });

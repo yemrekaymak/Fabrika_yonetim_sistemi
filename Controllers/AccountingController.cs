@@ -2,11 +2,13 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using FabrikaBackend.Data;
 using FabrikaBackend.Models;
+using Microsoft.AspNetCore.Authorization;
 
 namespace FabrikaBackend.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class AccountingController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -16,10 +18,17 @@ public class AccountingController : ControllerBase
         _context = context;
     }
 
+    private int GetCompanyId() =>
+        int.Parse(User.FindFirst("company_id")!.Value);
+
     [HttpPost("gider-kaydet")]
     public async Task<ActionResult<Expense>> SaveExpense(Expense expense)
     {
-        var existing = await _context.Expenses.FirstOrDefaultAsync(x => x.GiderAdi == expense.GiderAdi);
+        var companyId = GetCompanyId();
+        expense.CompanyId = companyId;
+
+        var existing = await _context.Expenses
+            .FirstOrDefaultAsync(x => x.GiderAdi == expense.GiderAdi && x.CompanyId == companyId);
         if (existing != null)
         {
             existing.Tutar = expense.Tutar;
@@ -36,13 +45,19 @@ public class AccountingController : ControllerBase
     [HttpGet("gider-listesi")]
     public async Task<ActionResult<IEnumerable<Expense>>> GetExpenses()
     {
-        return await _context.Expenses.OrderByDescending(x => x.Tarih).ToListAsync();
+        var companyId = GetCompanyId();
+        return await _context.Expenses
+            .Where(x => x.CompanyId == companyId)
+            .OrderByDescending(x => x.Tarih)
+            .ToListAsync();
     }
 
     [HttpGet("gider-getir/{giderAdi}")]
     public async Task<ActionResult<Expense>> GetExpense(string giderAdi)
     {
-        var expense = await _context.Expenses.FindAsync(giderAdi);
+        var companyId = GetCompanyId();
+        var expense = await _context.Expenses
+            .FirstOrDefaultAsync(x => x.GiderAdi == giderAdi && x.CompanyId == companyId);
         if (expense == null) return NotFound();
         return expense;
     }
@@ -50,7 +65,9 @@ public class AccountingController : ControllerBase
     [HttpDelete("gider-sil/{giderAdi}")]
     public async Task<IActionResult> DeleteExpense(string giderAdi)
     {
-        var expense = await _context.Expenses.FindAsync(giderAdi);
+        var companyId = GetCompanyId();
+        var expense = await _context.Expenses
+            .FirstOrDefaultAsync(x => x.GiderAdi == giderAdi && x.CompanyId == companyId);
         if (expense == null) return NotFound();
         _context.Expenses.Remove(expense);
         await _context.SaveChangesAsync();
@@ -61,7 +78,11 @@ public class AccountingController : ControllerBase
     [HttpPost("gelir-kaydet")]
     public async Task<ActionResult<Income>> SaveIncome(Income income)
     {
-        var existing = await _context.Incomes.FirstOrDefaultAsync(x => x.GelirAdi == income.GelirAdi);
+        var companyId = GetCompanyId();
+        income.CompanyId = companyId;
+
+        var existing = await _context.Incomes
+            .FirstOrDefaultAsync(x => x.GelirAdi == income.GelirAdi && x.CompanyId == companyId);
         if (existing != null)
         {
             existing.Tutar = income.Tutar;
@@ -77,13 +98,19 @@ public class AccountingController : ControllerBase
     [HttpGet("gelir-listesi")]
     public async Task<ActionResult<IEnumerable<Income>>> GetIncomes()
     {
-        return await _context.Incomes.OrderByDescending(x => x.Tarih).ToListAsync();
+        var companyId = GetCompanyId();
+        return await _context.Incomes
+            .Where(x => x.CompanyId == companyId)
+            .OrderByDescending(x => x.Tarih)
+            .ToListAsync();
     }
 
     [HttpGet("gelir-getir/{gelirAdi}")]
     public async Task<ActionResult<Income>> GetIncome(string gelirAdi)
     {
-        var income = await _context.Incomes.FindAsync(gelirAdi);
+        var companyId = GetCompanyId();
+        var income = await _context.Incomes
+            .FirstOrDefaultAsync(x => x.GelirAdi == gelirAdi && x.CompanyId == companyId);
         if (income == null) return NotFound();
         return income;
     }
@@ -91,7 +118,9 @@ public class AccountingController : ControllerBase
     [HttpDelete("gelir-sil/{gelirAdi}")]
     public async Task<IActionResult> DeleteIncome(string gelirAdi)
     {
-        var income = await _context.Incomes.FindAsync(gelirAdi);
+        var companyId = GetCompanyId();
+        var income = await _context.Incomes
+            .FirstOrDefaultAsync(x => x.GelirAdi == gelirAdi && x.CompanyId == companyId);
         if (income == null) return NotFound();
         _context.Incomes.Remove(income);
         await _context.SaveChangesAsync();
@@ -102,8 +131,13 @@ public class AccountingController : ControllerBase
     [HttpGet("ozet-rapor")]
     public async Task<IActionResult> GetSummary()
     {
-        var giderler = await _context.Expenses.ToListAsync();
-        var gelirler = await _context.Incomes.ToListAsync();
+        var companyId = GetCompanyId();
+        var giderler = await _context.Expenses
+            .Where(x => x.CompanyId == companyId)
+            .ToListAsync();
+        var gelirler = await _context.Incomes
+            .Where(x => x.CompanyId == companyId)
+            .ToListAsync();
 
         return Ok(new {
             sabit_giderler = giderler.Where(x => x.GiderTipi == "Sabit"),
