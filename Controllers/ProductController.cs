@@ -20,10 +20,11 @@ public class ProductController : ControllerBase
     [HttpGet("tum-urun-listesi")]
     public async Task<ActionResult<IEnumerable<Product>>> GetProducts()
     {
+        // Yeni modeldeki tüm alanlar (Makineler listesi dahil) otomatik gelir
         return await _context.Products.ToListAsync();
     }
 
-    // 2. ID İLE TEKİL ÜRÜN DETAYI GETİR (Kapasite, Maliyet vb.)
+    // 2. ID İLE TEKİL ÜRÜN DETAYI GETİR
     [HttpGet("urun-detay-getir/{id}")]
     public async Task<ActionResult<Product>> GetProduct(int id)
     {
@@ -35,10 +36,11 @@ public class ProductController : ControllerBase
         return product;
     }
 
-    // 3. YENİ ÜRÜN TANIMLA (Üretim Kapasitesi Dahil)
+    // 3. YENİ ÜRÜN TANIMLA (Dropdown ve Makine Seçimleri Buradan Gelecek)
     [HttpPost("yeni-urun-tanimla")]
     public async Task<ActionResult<Product>> CreateProduct(Product product)
     {
+        // Frontend'den gelen 'SeciliMakineler' (List<string>) ve 'SureBirimi' otomatik kaydedilir
         _context.Products.Add(product);
         await _context.SaveChangesAsync();
         
@@ -54,6 +56,7 @@ public class ProductController : ControllerBase
             return BadRequest(new { mesaj = "ID uyuşmazlığı saptandı!" });
         }
 
+        // Entity Framework, liste halindeki makineleri ve dropdown seçimlerini takip eder
         _context.Entry(product).State = EntityState.Modified;
 
         try

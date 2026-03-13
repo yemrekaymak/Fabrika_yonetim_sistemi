@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace FabrikaBackend.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreateForAI : Migration
+    public partial class HerSeySifirlandi : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -15,15 +15,32 @@ namespace FabrikaBackend.Migrations
                 name: "Customers",
                 columns: table => new
                 {
-                    Id = table.Column<string>(type: "TEXT", nullable: false),
+                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
                     FullName = table.Column<string>(type: "TEXT", nullable: false),
                     Email = table.Column<string>(type: "TEXT", nullable: false),
                     Phone = table.Column<string>(type: "TEXT", nullable: false),
-                    CompanyName = table.Column<string>(type: "TEXT", nullable: true)
+                    CompanyName = table.Column<string>(type: "TEXT", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Customers", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Machines",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    ProductId = table.Column<int>(type: "INTEGER", nullable: false),
+                    MachineName = table.Column<string>(type: "TEXT", nullable: false),
+                    IsUsed = table.Column<bool>(type: "INTEGER", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Machines", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -32,11 +49,9 @@ namespace FabrikaBackend.Migrations
                 {
                     Id = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
-                    ProductId = table.Column<int>(type: "INTEGER", nullable: false),
-                    Quantity = table.Column<int>(type: "INTEGER", nullable: false),
-                    EstimatedDays = table.Column<double>(type: "REAL", nullable: false),
-                    TotalCost = table.Column<double>(type: "REAL", nullable: false),
-                    SalePrice = table.Column<double>(type: "REAL", nullable: false),
+                    MusteriAdi = table.Column<string>(type: "TEXT", nullable: false),
+                    UrunAdi = table.Column<string>(type: "TEXT", nullable: false),
+                    Miktar = table.Column<int>(type: "INTEGER", nullable: false),
                     Status = table.Column<string>(type: "TEXT", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false)
                 },
@@ -84,17 +99,16 @@ namespace FabrikaBackend.Migrations
                     Id = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
                     UrunKodu = table.Column<string>(type: "TEXT", nullable: false),
-                    HamMadde = table.Column<string>(type: "TEXT", nullable: false),
-                    MalzemeTipi = table.Column<string>(type: "TEXT", nullable: false),
-                    PresKategorisi = table.Column<string>(type: "TEXT", nullable: false),
-                    GunlukUretim = table.Column<int>(type: "INTEGER", nullable: false),
-                    BrutAgirlikKg = table.Column<double>(type: "REAL", nullable: false),
-                    NetAgirlikKg = table.Column<double>(type: "REAL", nullable: false),
-                    HurdaOrani = table.Column<double>(type: "REAL", nullable: false),
-                    MalzemeVerimi = table.Column<double>(type: "REAL", nullable: false),
-                    CalisanSayisi = table.Column<int>(type: "INTEGER", nullable: false),
-                    HasHeatTreatment = table.Column<bool>(type: "INTEGER", nullable: false),
-                    BaseCost = table.Column<double>(type: "REAL", nullable: false)
+                    UrunAdi = table.Column<string>(type: "TEXT", nullable: false),
+                    HamMaddeTuru = table.Column<string>(type: "TEXT", nullable: false),
+                    BirimUretimSuresi = table.Column<int>(type: "INTEGER", nullable: false),
+                    SureBirimi = table.Column<string>(type: "TEXT", nullable: false),
+                    BrutAgirlikKg = table.Column<int>(type: "INTEGER", nullable: false),
+                    NetAgirlikKg = table.Column<int>(type: "INTEGER", nullable: false),
+                    HurdaOraniYuzde = table.Column<int>(type: "INTEGER", nullable: false),
+                    GunlukUretimKapasitesi = table.Column<int>(type: "INTEGER", nullable: false),
+                    SeciliMakineler = table.Column<string>(type: "TEXT", nullable: false),
+                    CurrentStock = table.Column<int>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -105,9 +119,10 @@ namespace FabrikaBackend.Migrations
                 name: "Stocks",
                 columns: table => new
                 {
+                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
                     Code = table.Column<string>(type: "TEXT", nullable: false),
                     Name = table.Column<string>(type: "TEXT", nullable: false),
-                    QuantityText = table.Column<string>(type: "TEXT", nullable: false),
                     Quantity = table.Column<double>(type: "REAL", nullable: false),
                     Capacity = table.Column<double>(type: "REAL", nullable: false),
                     CriticalLevel = table.Column<double>(type: "REAL", nullable: false),
@@ -117,23 +132,7 @@ namespace FabrikaBackend.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Stocks", x => x.Code);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "StockTransactions",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    ProductId = table.Column<string>(type: "TEXT", nullable: false),
-                    Quantity = table.Column<int>(type: "INTEGER", nullable: false),
-                    Type = table.Column<int>(type: "INTEGER", nullable: false),
-                    Date = table.Column<DateTime>(type: "TEXT", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_StockTransactions", x => x.Id);
+                    table.PrimaryKey("PK_Stocks", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -150,32 +149,6 @@ namespace FabrikaBackend.Migrations
                 {
                     table.PrimaryKey("PK_Users", x => x.Id);
                 });
-
-            migrationBuilder.CreateTable(
-                name: "Machines",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    ProductId = table.Column<int>(type: "INTEGER", nullable: false),
-                    MachineName = table.Column<string>(type: "TEXT", nullable: false),
-                    IsUsed = table.Column<bool>(type: "INTEGER", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Machines", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_Machines_Products_ProductId",
-                        column: x => x.ProductId,
-                        principalTable: "Products",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Machines_ProductId",
-                table: "Machines",
-                column: "ProductId");
         }
 
         /// <inheritdoc />
@@ -194,16 +167,13 @@ namespace FabrikaBackend.Migrations
                 name: "Personnels");
 
             migrationBuilder.DropTable(
+                name: "Products");
+
+            migrationBuilder.DropTable(
                 name: "Stocks");
 
             migrationBuilder.DropTable(
-                name: "StockTransactions");
-
-            migrationBuilder.DropTable(
                 name: "Users");
-
-            migrationBuilder.DropTable(
-                name: "Products");
         }
     }
 }
