@@ -3,6 +3,7 @@ using System;
 using FabrikaBackend.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,12 +11,49 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FabrikaBackend.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260313135822_AccountingTableAdded")]
+    partial class AccountingTableAdded
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.2");
+
+            modelBuilder.Entity("FabrikaBackend.Models.Accounting", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasAnnotation("Relational:JsonPropertyName", "id");
+
+                    b.Property<string>("Baslik")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasAnnotation("Relational:JsonPropertyName", "baslik");
+
+                    b.Property<string>("GiderTipi")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasAnnotation("Relational:JsonPropertyName", "gider_tipi");
+
+                    b.Property<string>("IslemTuru")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasAnnotation("Relational:JsonPropertyName", "islem_turu");
+
+                    b.Property<DateTime>("Tarih")
+                        .HasColumnType("TEXT")
+                        .HasAnnotation("Relational:JsonPropertyName", "tarih");
+
+                    b.Property<double>("Tutar")
+                        .HasColumnType("REAL")
+                        .HasAnnotation("Relational:JsonPropertyName", "tutar");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Accounting");
+                });
 
             modelBuilder.Entity("FabrikaBackend.Models.Customer", b =>
                 {
@@ -50,49 +88,6 @@ namespace FabrikaBackend.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Customers");
-                });
-
-            modelBuilder.Entity("FabrikaBackend.Models.Expense", b =>
-                {
-                    b.Property<string>("GiderAdi")
-                        .HasColumnType("TEXT")
-                        .HasAnnotation("Relational:JsonPropertyName", "gider_adi");
-
-                    b.Property<string>("GiderTipi")
-                        .IsRequired()
-                        .HasColumnType("TEXT")
-                        .HasAnnotation("Relational:JsonPropertyName", "gider_tipi");
-
-                    b.Property<DateTime>("Tarih")
-                        .HasColumnType("TEXT")
-                        .HasAnnotation("Relational:JsonPropertyName", "tarih");
-
-                    b.Property<double>("Tutar")
-                        .HasColumnType("REAL")
-                        .HasAnnotation("Relational:JsonPropertyName", "tutar");
-
-                    b.HasKey("GiderAdi");
-
-                    b.ToTable("Expenses");
-                });
-
-            modelBuilder.Entity("FabrikaBackend.Models.Income", b =>
-                {
-                    b.Property<string>("GelirAdi")
-                        .HasColumnType("TEXT")
-                        .HasAnnotation("Relational:JsonPropertyName", "gelir_adi");
-
-                    b.Property<DateTime>("Tarih")
-                        .HasColumnType("TEXT")
-                        .HasAnnotation("Relational:JsonPropertyName", "tarih");
-
-                    b.Property<double>("Tutar")
-                        .HasColumnType("REAL")
-                        .HasAnnotation("Relational:JsonPropertyName", "tutar");
-
-                    b.HasKey("GelirAdi");
-
-                    b.ToTable("Incomes");
                 });
 
             modelBuilder.Entity("FabrikaBackend.Models.Machine", b =>
