@@ -8,40 +8,50 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// --- 1. VERİTABANI BAĞLANTISI (OTOMATİK SEÇİM & FORMAT DÖNÜŞTÜRME) ---
+// --- 1. SERVİS YAPILANDIRMALARI (builder.Build() öncesi her şey burada olmalı) ---
+
+// CORS Ayarı (Arkadaşının hatasını çözen kısım burası)
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("HerkesGelsin", policyBuilder =>
+    {
+        policyBuilder
+            .AllowAnyOrigin()
+            .AllowAnyMethod()
+            .AllowAnyHeader();
+    });
+});
+
+// JSON ve Enum Ayarları
+builder.Services.AddControllers()
+    .AddJsonOptions(options => 
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+
+// Veritabanı Bağlantı Ayarı (Railway & SQLite Otomatik Seçim)
 var rawConnectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
 string? connectionString;
 
 if (!string.IsNullOrEmpty(rawConnectionString) && (rawConnectionString.StartsWith("postgres://") || rawConnectionString.StartsWith("postgresql://")))
 {
-    // Railway'in "postgres://" veya "postgresql://" formatını Npgsql'in anlayacağı "Host=..." formatına çeviriyoruz
     var databaseUri = new Uri(rawConnectionString);
     var userInfo = databaseUri.UserInfo.Split(':');
-    
     connectionString = $"Host={databaseUri.Host};Port={databaseUri.Port};Database={databaseUri.LocalPath.Substring(1)};" +
                        $"Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
-    Console.WriteLine($"--> [DB] PostgreSQL bağlantısı kullanılıyor: {connectionString.Replace(userInfo[1], "***")}");
 }
 else
 {
-    // Yereldeysen appsettings.json'daki SqliteConnection'ı kullan
     connectionString = rawConnectionString ?? builder.Configuration.GetConnectionString("SqliteConnection") ?? "Data Source=fabrika.db";
-    Console.WriteLine($"--> [DB] SQLite bağlantısı kullanılıyor: {connectionString}");
 }
 
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
     if (connectionString.Contains("Host="))
-    {
         options.UseNpgsql(connectionString);
-    }
     else
-    {
         options.UseSqlite(connectionString);
-    }
 });
 
-// --- 2. AUTHENTICATION & JWT YAPILANDIRMASI ---
+// JWT Ayarları
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -57,67 +67,39 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-// --- 3. JSON VE ENUM AYARLARI ---
-builder.Services.AddControllers()
-    .AddJsonOptions(options => 
-        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
-
 builder.Services.AddHttpClient();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// --- 4. CORS ---
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("HerkesGelsin", policyBuilder =>
-    {
-        policyBuilder
-            .AllowAnyOrigin()
-            .AllowAnyMethod()
-            .AllowAnyHeader();
-    });
-});
-
-// --- 5. OTONOM TAKİP SERVİSİ ---
-// builder.Services.AddHostedService<ProductionTrackerService>(); // Tetikleyici mantık kaldırıldı
-
+// --- 2. UYGULAMA İNŞA ET (Build) ---
 var app = builder.Build();
 
-// --- 🛠️ VERİTABANI OTOMASYONU ---
+// --- 3. VERİTABANI OTOMASYONU (Migration & EnsureCreated) ---
 using (var scope = app.Services.CreateScope())
 {
-    var services = scope.ServiceProvider;
-    try
+    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    try 
     {
-        var context = services.GetRequiredService<AppDbContext>();
-        
-        Console.WriteLine("--> [DB] Migration'lar uygulanıyor...");
-        context.Database.Migrate();
-        Console.WriteLine("--> [BAŞARILI] Tüm migration'lar uygulandı ve tablolar oluşturuldu.");
+        context.Database.Migrate(); // Migrationları basar
+        Console.WriteLine("--> Database hazır.");
     }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"--> [HATA] Veritabanı hazırlığı sırasında hata: {ex.Message}");
-        Console.WriteLine($"--> [DETAY] {ex.InnerException?.Message}");
-    }
+    catch { context.Database.EnsureCreated(); } // Migration yoksa direkt oluşturur
 }
 
-// --- 6. MIDDLEWARE SIRALAMASI ---
+// --- 4. MIDDLEWARE SIRALAMASI (Sıralama çok önemli!) ---
+
 app.UseSwagger();
 app.UseSwaggerUI(c => {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "Fabrika API V1");
     c.RoutePrefix = string.Empty; 
 });
 
+// CORS Middleware'i Authentication'dan ÖNCE gelmeli
 app.UseCors("HerkesGelsin"); 
+
 app.UseAuthentication(); 
 app.UseAuthorization();
+
 app.MapControllers();
 
-
-using (var scope = app.Services.CreateScope())
-{
-    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    context.Database.EnsureCreated(); 
-}
 app.Run();
