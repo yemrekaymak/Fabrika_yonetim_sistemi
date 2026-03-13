@@ -16,12 +16,31 @@ public class ProductController : ControllerBase
         _context = context;
     }
 
-    // 1. TÜM ÜRÜN LİSTESİNİ GETİR
+    // 1. TÜM ÜRÜN LİSTESİNİ GETİR (Frontend Stok Tablosu İçin Optimize Edildi)
     [HttpGet("tum-urun-listesi")]
-    public async Task<ActionResult<IEnumerable<Product>>> GetProducts()
+    public async Task<ActionResult<IEnumerable<object>>> GetProducts()
     {
-        // Yeni modeldeki tüm alanlar (Makineler listesi dahil) otomatik gelir
-        return await _context.Products.ToListAsync();
+        var products = await _context.Products.ToListAsync();
+
+        // Arkadaşının mappers.js dosyasındaki beklentilerine göre veriyi şekillendiriyoruz
+        var response = products.Select(p => new
+        {
+            p.Id,
+            kod = p.UrunKodu,
+            ad = p.UrunAdi,
+            brutAgirlik = p.BrutAgirlik, // Artık "—" yerine değer gelecek
+            netAgirlik = p.NetAgirlik,
+            hurdaOrani = p.HurdaOrani,
+            kapasite = p.Kapasite,
+            kritik = p.KritikSeviye,
+            miktar = p.CurrentStock, // Grafiklerin dolmasını sağlayacak miktar
+            birimMaliyet = p.Maliyet,
+            birimFiyat = p.Fiyat,
+            // DURUM HESAPLAMASI: Miktar kritik seviyenin altındaysa "kritik" döner
+            durum = p.CurrentStock <= p.KritikSeviye ? "kritik" : "yeterli"
+        });
+
+        return Ok(response);
     }
 
     // 2. ID İLE TEKİL ÜRÜN DETAYI GETİR
@@ -36,11 +55,11 @@ public class ProductController : ControllerBase
         return product;
     }
 
-    // 3. YENİ ÜRÜN TANIMLA (Dropdown ve Makine Seçimleri Buradan Gelecek)
+    // 3. YENİ ÜRÜN TANIMLA
     [HttpPost("yeni-urun-tanimla")]
     public async Task<ActionResult<Product>> CreateProduct(Product product)
     {
-        // Frontend'den gelen 'SeciliMakineler' (List<string>) ve 'SureBirimi' otomatik kaydedilir
+        // Eğer miktar girilmediyse 0 olarak başlasın ama veritabanına kaydedilsin
         _context.Products.Add(product);
         await _context.SaveChangesAsync();
         
@@ -56,7 +75,6 @@ public class ProductController : ControllerBase
             return BadRequest(new { mesaj = "ID uyuşmazlığı saptandı!" });
         }
 
-        // Entity Framework, liste halindeki makineleri ve dropdown seçimlerini takip eder
         _context.Entry(product).State = EntityState.Modified;
 
         try

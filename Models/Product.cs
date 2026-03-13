@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
@@ -11,40 +9,36 @@ public class Product
     [JsonPropertyName("id")]
     public int Id { get; set; }
 
-    [Required]
     [JsonPropertyName("urun_kodu")]
     public string UrunKodu { get; set; } = string.Empty;
 
-    [Required]
     [JsonPropertyName("urun_adi")]
     public string UrunAdi { get; set; } = string.Empty;
 
-    [JsonPropertyName("ham_madde_turu")]
-    public string HamMaddeTuru { get; set; } = string.Empty;
+    // Arkadaşının "—" gördüğü eksik alanlar:
+    [JsonPropertyName("brut_agirlik")]
+    public double BrutAgirlik { get; set; }
 
-    [JsonPropertyName("birim_uretim_suresi")]
-    public int BirimUretimSuresi { get; set; }
+    [JsonPropertyName("net_agirlik")]
+    public double NetAgirlik { get; set; }
 
-    // Frontend Dropdown: "Dakika", "Saat" değerlerini alacak
-    [JsonPropertyName("sure_birimi")] 
-    public string SureBirimi { get; set; } = "Dakika";
+    [JsonPropertyName("hurda_orani")]
+    public double HurdaOrani { get; set; }
 
-    [JsonPropertyName("brut_agirlik_kg")]
-    public int BrutAgirlikKg { get; set; }
+    // Grafik ve Kapasite için gereken alanlar:
+    [JsonPropertyName("kapasite")]
+    public int Kapasite { get; set; }
 
-    [JsonPropertyName("net_agirlik_kg")]
-    public int NetAgirlikKg { get; set; }
+    [JsonPropertyName("kritik_seviye")]
+    public int KritikSeviye { get; set; } = 100;
 
-    [JsonPropertyName("hurda_orani_yuzde")]
-    public int HurdaOraniYuzde { get; set; }
+    [JsonPropertyName("miktar")] // Frontend'deki miktarSayi buna bağlanacak
+    public int CurrentStock { get; set; }
 
-    [JsonPropertyName("gunluk_uretim_kapasitesi")]
-    public int GunlukUretimKapasitesi { get; set; }
+    // Maliyet ve Fiyat alanları (Tabloda 0.00 görünmemesi için):
+    [JsonPropertyName("maliyet")]
+    public double Maliyet { get; set; }
 
-    // Frontend Checkbox/Multi-select: ["1000 ton", "Eksantrik 80"] gibi bir liste tutar
-    [JsonPropertyName("secili_makineler")]
-    public List<string> SeciliMakineler { get; set; } = new List<string>();
-
-    [JsonPropertyName("current_stock")]
-    public int CurrentStock { get; set; } = 0;
+    [JsonPropertyName("fiyat")]
+    public double Fiyat { get; set; }
 }
