@@ -45,7 +45,7 @@ public class ProductionTrackerService : BackgroundService
                             if (DateTime.UtcNow >= order.CreatedAt.AddSeconds(5)) 
                             {
                                 _logger.LogInformation("--> [TAMAMLANDI] Sipariş {id} üretildi!", order.Id);
-                                order.Durum = "Completed"; 
+                                order.Status = "pending"; 
                             }
                         }
                         
