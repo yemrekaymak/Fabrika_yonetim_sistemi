@@ -7,7 +7,7 @@ namespace FabrikaBackend.Models;
 
 public class Product
 {
-    [Key]
+    [Key]//
     [JsonPropertyName("id")]
     public int Id { get; set; }
 

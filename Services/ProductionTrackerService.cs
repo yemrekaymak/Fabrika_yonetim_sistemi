@@ -36,7 +36,7 @@ public class ProductionTrackerService : BackgroundService
 
                         // Sorgu alanı: Tablo yoksa catch bloğuna düşer, uygulama ÇÖKMEZ.
                         var activeOrders = await context.Orders
-                            .Where(o => o.Status == "Producing")
+                            .Where(o => o.Status== "pending")
                             .ToListAsync(stoppingToken);
 
                         foreach (var order in activeOrders)
@@ -45,7 +45,7 @@ public class ProductionTrackerService : BackgroundService
                             if (DateTime.UtcNow >= order.CreatedAt.AddSeconds(5)) 
                             {
                                 _logger.LogInformation("--> [TAMAMLANDI] Sipariş {id} üretildi!", order.Id);
-                                order.Status = "Completed"; 
+                                order.Durum = "Completed"; 
                             }
                         }
                         
