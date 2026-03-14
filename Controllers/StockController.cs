@@ -25,11 +25,11 @@ public class StockController : ControllerBase
         return await _context.Stocks.ToListAsync();
     }
 
-    // GET: api/stok/stok-getir/5
-    [HttpGet("stok-getir/{id}")]
-    public async Task<ActionResult<Stock>> GetStock(int id)
+    // GET: api/stok/stok-getir/STK-001
+    [HttpGet("stok-getir/{code}")]
+    public async Task<ActionResult<Stock>> GetStock(string code)
     {
-        var stock = await _context.Stocks.FindAsync(id);
+        var stock = await _context.Stocks.FindAsync(code);
         if (stock == null) return NotFound("Stok kaydı bulunamadı.");
         return stock;
     }
@@ -41,14 +41,14 @@ public class StockController : ControllerBase
         _context.Stocks.Add(stock);
         await _context.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetStock), new { id = stock.Id }, stock);
+        return CreatedAtAction(nameof(GetStock), new { code = stock.Code }, stock);
     }
 
-    // PUT: api/stok/stok-guncelle/5
-    [HttpPut("stok-guncelle/{id}")]
-    public async Task<IActionResult> UpdateStock(int id, Stock stock)
+    // PUT: api/stok/stok-guncelle/STK-001
+    [HttpPut("stok-guncelle/{code}")]
+    public async Task<IActionResult> UpdateStock(string code, Stock stock)
     {
-        if (id != stock.Id) return BadRequest("ID uyuşmazlığı!");
+        if (code != stock.Code) return BadRequest("Kod uyuşmazlığı!");
 
         _context.Entry(stock).State = EntityState.Modified;
 
@@ -58,19 +58,19 @@ public class StockController : ControllerBase
         }
         catch (DbUpdateConcurrencyException)
         {
-            if (!_context.Stocks.Any(e => e.Id == id)) return NotFound("Güncellenecek stok kaydı bulunamadı.");
+            if (!_context.Stocks.Any(e => e.Code == code)) return NotFound("Güncellenecek stok bulunamadı.");
             else throw;
         }
 
         return NoContent();
     }
 
-    // DELETE: api/stok/stok-sil/5
-    [HttpDelete("stok-sil/{id}")]
-    public async Task<IActionResult> DeleteStock(int id)
+    // DELETE: api/stok/stok-sil/STK-001
+    [HttpDelete("stok-sil/{code}")]
+    public async Task<IActionResult> DeleteStock(string code)
     {
-        var stock = await _context.Stocks.FindAsync(id);
-        if (stock == null) return NotFound("Silinecek stok kaydı bulunamadı.");
+        var stock = await _context.Stocks.FindAsync(code);
+        if (stock == null) return NotFound("Silinecek stok bulunamadı.");
 
         _context.Stocks.Remove(stock);
         await _context.SaveChangesAsync();
