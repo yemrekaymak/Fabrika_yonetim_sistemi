@@ -8,7 +8,7 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// --- 1. VERİTABANI: SADECE SQLITE ---
+// --- 1. VERİTABANI ---
 var connectionString = builder.Configuration.GetConnectionString("SqliteConnection") ?? "Data Source=fabrika.db";
 builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlite(connectionString));
 
@@ -26,20 +26,25 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-// --- 3. CORS AYARI (FRONTEND İÇİN) ---
+// --- 3. CORS AYARI (HAYAT KURTARAN DÜZENLEME) ---
+// Render'da yayınladığın için originleri daha esnek tutmalıyız
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("FrontendPolicy", policy =>
     {
-        policy.WithOrigins("http://localhost:3000") // Senin React/Next.js adresin
-              .AllowAnyMethod()
-              .AllowAnyHeader()
-              .AllowCredentials(); // Auth (401) hatalarını çözmek için önemli
+        policy.AllowAnyOrigin()    // Render ve Localhost arasındaki bariyeri kaldırır
+              .AllowAnyMethod()    // GET, POST, PUT, DELETE hepsine izin verir
+              .AllowAnyHeader();   // Authorization header'ına izin verir
+        // NOT: AllowAnyOrigin varken AllowCredentials() kullanılmaz, o yüzden sildim.
     });
 });
 
 // --- 4. DİĞER SERVİSLER ---
-builder.Services.AddControllers().AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+builder.Services.AddControllers().AddJsonOptions(o => {
+    o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    // JSON isimlendirmesinde frontend ile çakışma olmaması için:
+    o.JsonSerializerOptions.PropertyNamingPolicy = null; 
+});
 builder.Services.AddHttpClient();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -52,15 +57,17 @@ using (var scope = app.Services.CreateScope()) {
     context.Database.EnsureCreated();
 }
 
-// --- MIDDLEWARE SIRALAMASI (ÖNEMLİ!) ---
+// --- MIDDLEWARE SIRALAMASI ---
 app.UseSwagger();
 app.UseSwaggerUI(c => { 
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "V1"); 
     c.RoutePrefix = string.Empty; 
 });
 
-// CORS mutlaka Routing'den sonra, Auth'dan önce gelmeli
-app.UseCors("FrontendPolicy");
+// Sıralama Kritiktir:
+app.UseRouting(); // Rotaları belirle
+
+app.UseCors("FrontendPolicy"); // CORS her zaman Auth'dan önce gelmeli!
 
 app.UseAuthentication();
 app.UseAuthorization();
