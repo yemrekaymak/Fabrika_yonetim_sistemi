@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FabrikaBackend.Controllers;
 
-[Route("api/personel")]
+[Route("api/Personnel")] // Frontend: api/Personnel/... bekliyor
 [ApiController]
 public class PersonnelController : ControllerBase
 {
@@ -16,15 +16,24 @@ public class PersonnelController : ControllerBase
         _context = context;
     }
 
-    // GET: api/personel/personel-listele
-    [HttpGet("personel-listele")]
+    // Frontend: api.get('/api/Personnel/tum-personel-listesi')
+    [HttpGet("tum-personel-listesi")]
     public async Task<ActionResult<IEnumerable<Personnel>>> GetPersonnels()
     {
         return await _context.Personnels.ToListAsync();
     }
 
-    // POST: api/personel/personel-ekle
-    [HttpPost("personel-ekle")]
+    // Frontend: api.get(`/api/Personnel/personel-detay-getir/${id}`)
+    [HttpGet("personel-detay-getir/{id}")]
+    public async Task<ActionResult<Personnel>> GetPersonnel(int id)
+    {
+        var personnel = await _context.Personnels.FindAsync(id);
+        if (personnel == null) return NotFound("Personel bulunamadı.");
+        return personnel;
+    }
+
+    // Frontend: api.post('/api/Personnel/yeni-personel-ekle', body)
+    [HttpPost("yeni-personel-ekle")]
     public async Task<ActionResult<Personnel>> PostPersonnel(Personnel personnel)
     {
         _context.Personnels.Add(personnel);
@@ -32,8 +41,8 @@ public class PersonnelController : ControllerBase
         return Ok(personnel);
     }
 
-    // PUT: api/personel/personel-guncelle/5
-    [HttpPut("personel-guncelle/{id}")]
+    // Frontend: api.put(`/api/Personnel/personel-bilgisi-guncelle/${id}`, body)
+    [HttpPut("personel-bilgisi-guncelle/{id}")]
     public async Task<IActionResult> PutPersonnel(int id, Personnel personnel)
     {
         if (id != personnel.Id)
@@ -62,8 +71,8 @@ public class PersonnelController : ControllerBase
         return NoContent();
     }
 
-    // DELETE: api/personel/personel-sil/5
-    [HttpDelete("personel-sil/{id}")]
+    // Frontend: api.delete(`/api/Personnel/personel-kaydi-sil/${id}`)
+    [HttpDelete("personel-kaydi-sil/{id}")]
     public async Task<IActionResult> DeletePersonnel(int id)
     {
         var personnel = await _context.Personnels.FindAsync(id);

@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace FabrikaBackend.Controllers;
 
-[Route("api/stok")]
+[Route("api/stok")] // Frontend: /api/stok bekliyor
 [ApiController]
 public class StockController : ControllerBase
 {
@@ -18,15 +18,16 @@ public class StockController : ControllerBase
         _context = context;
     }
 
-    // GET: api/stok/stok-listesi
-    [HttpGet("stok-listesi")]
+    // Frontend: api.get('/api/stok')
+    [HttpGet]
     public async Task<ActionResult<IEnumerable<Stock>>> GetStocks()
     {
         return await _context.Stocks.ToListAsync();
     }
 
-    // GET: api/stok/stok-getir/STK-001
-    [HttpGet("stok-getir/{code}")]
+    // Frontend: api.get(`/api/stok/${code}`) 
+    // Not: Frontend list.find yapsa da silme/güncelleme için bu route şart.
+    [HttpGet("{code}")]
     public async Task<ActionResult<Stock>> GetStock(string code)
     {
         var stock = await _context.Stocks.FindAsync(code);
@@ -34,8 +35,8 @@ public class StockController : ControllerBase
         return stock;
     }
 
-    // POST: api/stok/stok-ekle
-    [HttpPost("stok-ekle")]
+    // Frontend: api.post('/api/stok', body)
+    [HttpPost]
     public async Task<ActionResult<Stock>> CreateStock(Stock stock)
     {
         _context.Stocks.Add(stock);
@@ -44,10 +45,11 @@ public class StockController : ControllerBase
         return CreatedAtAction(nameof(GetStock), new { code = stock.Code }, stock);
     }
 
-    // PUT: api/stok/stok-guncelle/STK-001
-    [HttpPut("stok-guncelle/{code}")]
+    // Frontend: api.put(`/api/stok/${id}`, body)
+    [HttpPut("{code}")]
     public async Task<IActionResult> UpdateStock(string code, Stock stock)
     {
+        // Modelindeki anahtar alan Code olduğu için eşleşmeyi buradan yapıyoruz
         if (code != stock.Code) return BadRequest("Kod uyuşmazlığı!");
 
         _context.Entry(stock).State = EntityState.Modified;
@@ -65,8 +67,8 @@ public class StockController : ControllerBase
         return NoContent();
     }
 
-    // DELETE: api/stok/stok-sil/STK-001
-    [HttpDelete("stok-sil/{code}")]
+    // Frontend: api.delete(`/api/stok/${id}`)
+    [HttpDelete("{code}")]
     public async Task<IActionResult> DeleteStock(string code)
     {
         var stock = await _context.Stocks.FindAsync(code);

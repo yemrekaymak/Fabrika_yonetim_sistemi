@@ -6,9 +6,9 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace FabrikaBackend.Controllers;
 
-[Route("api/[controller]")]
+[Route("api/Accounting")] // Frontend: api/Accounting/... bekliyor
 [ApiController]
-[Authorize]
+[Authorize] // 401 hatası alırsan token gönderdiğinden emin ol!
 public class AccountingController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -21,6 +21,7 @@ public class AccountingController : ControllerBase
     private int GetCompanyId() =>
         int.Parse(User.FindFirst("company_id")!.Value);
 
+    // Frontend: api.post('/api/Accounting/gider-kaydet', body)
     [HttpPost("gider-kaydet")]
     public async Task<ActionResult<Expense>> SaveExpense(Expense expense)
     {
@@ -29,6 +30,7 @@ public class AccountingController : ControllerBase
 
         var existing = await _context.Expenses
             .FirstOrDefaultAsync(x => x.GiderAdi == expense.GiderAdi && x.CompanyId == companyId);
+            
         if (existing != null)
         {
             existing.Tutar = expense.Tutar;
@@ -39,9 +41,10 @@ public class AccountingController : ControllerBase
         else { _context.Expenses.Add(expense); }
 
         await _context.SaveChangesAsync();
-        return Ok(new { mesaj = "Gider kaydedildi/güncellendi.", veri = expense });
+        return Ok(expense); // Frontend expenseFromApi fonksiyonu direkt objeyi bekliyor
     }
 
+    // Frontend: api.get('/api/Accounting/gider-listesi')
     [HttpGet("gider-listesi")]
     public async Task<ActionResult<IEnumerable<Expense>>> GetExpenses()
     {
@@ -52,29 +55,22 @@ public class AccountingController : ControllerBase
             .ToListAsync();
     }
 
-    [HttpGet("gider-getir/{giderAdi}")]
-    public async Task<ActionResult<Expense>> GetExpense(string giderAdi)
-    {
-        var companyId = GetCompanyId();
-        var expense = await _context.Expenses
-            .FirstOrDefaultAsync(x => x.GiderAdi == giderAdi && x.CompanyId == companyId);
-        if (expense == null) return NotFound();
-        return expense;
-    }
-
+    // Frontend: api.delete(`/api/Accounting/gider-sil/${giderAdi}`)
     [HttpDelete("gider-sil/{giderAdi}")]
     public async Task<IActionResult> DeleteExpense(string giderAdi)
     {
         var companyId = GetCompanyId();
         var expense = await _context.Expenses
             .FirstOrDefaultAsync(x => x.GiderAdi == giderAdi && x.CompanyId == companyId);
+            
         if (expense == null) return NotFound();
+        
         _context.Expenses.Remove(expense);
         await _context.SaveChangesAsync();
         return Ok(new { mesaj = "Gider silindi." });
     }
 
-
+    // Frontend: api.post('/api/Accounting/gelir-kaydet', body)
     [HttpPost("gelir-kaydet")]
     public async Task<ActionResult<Income>> SaveIncome(Income income)
     {
@@ -83,6 +79,7 @@ public class AccountingController : ControllerBase
 
         var existing = await _context.Incomes
             .FirstOrDefaultAsync(x => x.GelirAdi == income.GelirAdi && x.CompanyId == companyId);
+            
         if (existing != null)
         {
             existing.Tutar = income.Tutar;
@@ -92,9 +89,10 @@ public class AccountingController : ControllerBase
         else { _context.Incomes.Add(income); }
 
         await _context.SaveChangesAsync();
-        return Ok(new { mesaj = "Gelir kaydedildi/güncellendi.", veri = income });
+        return Ok(income);
     }
 
+    // Frontend: api.get('/api/Accounting/gelir-listesi')
     [HttpGet("gelir-listesi")]
     public async Task<ActionResult<IEnumerable<Income>>> GetIncomes()
     {
@@ -105,29 +103,22 @@ public class AccountingController : ControllerBase
             .ToListAsync();
     }
 
-    [HttpGet("gelir-getir/{gelirAdi}")]
-    public async Task<ActionResult<Income>> GetIncome(string gelirAdi)
-    {
-        var companyId = GetCompanyId();
-        var income = await _context.Incomes
-            .FirstOrDefaultAsync(x => x.GelirAdi == gelirAdi && x.CompanyId == companyId);
-        if (income == null) return NotFound();
-        return income;
-    }
-
+    // Frontend: api.delete(`/api/Accounting/gelir-sil/${gelirAdi}`)
     [HttpDelete("gelir-sil/{gelirAdi}")]
     public async Task<IActionResult> DeleteIncome(string gelirAdi)
     {
         var companyId = GetCompanyId();
         var income = await _context.Incomes
             .FirstOrDefaultAsync(x => x.GelirAdi == gelirAdi && x.CompanyId == companyId);
+            
         if (income == null) return NotFound();
+        
         _context.Incomes.Remove(income);
         await _context.SaveChangesAsync();
         return Ok(new { mesaj = "Gelir silindi." });
     }
 
-
+    // Frontend: api.get('/api/Accounting/ozet-rapor')
     [HttpGet("ozet-rapor")]
     public async Task<IActionResult> GetSummary()
     {

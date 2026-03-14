@@ -26,25 +26,45 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-// --- 3. DİĞER SERVİSLER ---
+// --- 3. CORS AYARI (FRONTEND İÇİN) ---
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("FrontendPolicy", policy =>
+    {
+        policy.WithOrigins("http://localhost:3000") // Senin React/Next.js adresin
+              .AllowAnyMethod()
+              .AllowAnyHeader()
+              .AllowCredentials(); // Auth (401) hatalarını çözmek için önemli
+    });
+});
+
+// --- 4. DİĞER SERVİSLER ---
 builder.Services.AddControllers().AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddHttpClient();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddCors(o => o.AddPolicy("HerkesGelsin", b => b.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
 
 var app = builder.Build();
 
 // --- 🛠️ OTOMATİK VERİTABANI OLUŞTURMA ---
 using (var scope = app.Services.CreateScope()) {
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    context.Database.EnsureCreated(); // Migration hatası almamak için en basit yol
+    context.Database.EnsureCreated();
 }
 
+// --- MIDDLEWARE SIRALAMASI (ÖNEMLİ!) ---
 app.UseSwagger();
-app.UseSwaggerUI(c => { c.SwaggerEndpoint("/swagger/v1/swagger.json", "V1"); c.RoutePrefix = string.Empty; });
-app.UseCors("HerkesGelsin");
+app.UseSwaggerUI(c => { 
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "V1"); 
+    c.RoutePrefix = string.Empty; 
+});
+
+// CORS mutlaka Routing'den sonra, Auth'dan önce gelmeli
+app.UseCors("FrontendPolicy");
+
 app.UseAuthentication();
 app.UseAuthorization();
+
 app.MapControllers();
+
 app.Run();

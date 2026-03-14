@@ -16,21 +16,33 @@ public class MachineController : ControllerBase
         _context = context;
     }
 
-    [HttpGet("makine-listesi")]
+    // Frontend: api.get('/api/Machine/tum-makine-listesi')
+    [HttpGet("tum-makine-listesi")]
     public async Task<ActionResult<IEnumerable<Machine>>> GetMachines()
     {
         return await _context.Machines.ToListAsync();
     }
 
-    [HttpPost("makine-ekle")]
+    // Frontend: api.get(`/api/Machine/makine-detay-getir/${id}`)
+    [HttpGet("makine-detay-getir/{id}")]
+    public async Task<ActionResult<Machine>> GetMachine(int id)
+    {
+        var machine = await _context.Machines.FindAsync(id);
+        if (machine == null) return NotFound("Makine bulunamadı.");
+        return machine;
+    }
+
+    // Frontend: api.post('/api/Machine/yeni-makine-ekle', body)
+    [HttpPost("yeni-makine-ekle")]
     public async Task<ActionResult<Machine>> PostMachine(Machine machine)
     {
         _context.Machines.Add(machine);
         await _context.SaveChangesAsync();
-        return CreatedAtAction(nameof(GetMachines), new { id = machine.Id }, machine);
+        return CreatedAtAction(nameof(GetMachine), new { id = machine.Id }, machine);
     }
 
-    [HttpPut("makine-guncelle/{id}")]
+    // Frontend: api.put(`/api/Machine/makine-bilgisi-guncelle/${id}`, body)
+    [HttpPut("makine-bilgisi-guncelle/{id}")]
     public async Task<IActionResult> PutMachine(int id, Machine machine)
     {
         if (id != machine.Id)
@@ -59,7 +71,8 @@ public class MachineController : ControllerBase
         return NoContent();
     }
 
-    [HttpDelete("makine-sil/{id}")]
+    // Frontend: api.delete(`/api/Machine/makine-kaydi-sil/${id}`)
+    [HttpDelete("makine-kaydi-sil/{id}")]
     public async Task<IActionResult> DeleteMachine(int id)
     {
         var machine = await _context.Machines.FindAsync(id);

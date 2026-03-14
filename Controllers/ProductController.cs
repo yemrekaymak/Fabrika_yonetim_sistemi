@@ -5,7 +5,7 @@ using FabrikaBackend.Models;
 
 namespace FabrikaBackend.Controllers;
 
-[Route("api/urunler")]
+[Route("api/products")] // Frontend: /api/products bekliyor
 [ApiController]
 public class ProductController : ControllerBase
 {
@@ -16,15 +16,15 @@ public class ProductController : ControllerBase
         _context = context;
     }
 
-    // GET: api/urunler/urun-listesi
-    [HttpGet("urun-listesi")]
+    // Frontend: api.get('/api/products')
+    [HttpGet]
     public async Task<ActionResult<IEnumerable<Product>>> GetProducts()
     {
         return await _context.Products.ToListAsync();
     }
 
-    // GET: api/urunler/urun-getir/5
-    [HttpGet("urun-getir/{id}")]
+    // Frontend: api.get(`/api/products/${id}`)
+    [HttpGet("{id}")]
     public async Task<ActionResult<Product>> GetProduct(int id)
     {
         var product = await _context.Products.FindAsync(id);
@@ -32,8 +32,8 @@ public class ProductController : ControllerBase
         return product;
     }
 
-    // POST: api/urunler/urun-ekle
-    [HttpPost("urun-ekle")]
+    // Frontend: api.post('/api/products', body)
+    [HttpPost]
     public async Task<ActionResult<Product>> CreateProduct(Product product)
     {
         _context.Products.Add(product);
@@ -41,8 +41,8 @@ public class ProductController : ControllerBase
         return CreatedAtAction(nameof(GetProduct), new { id = product.Id }, product);
     }
 
-    // PUT: api/urunler/urun-guncelle/5
-    [HttpPut("urun-guncelle/{id}")]
+    // Frontend: api.put(`/api/products/${id}`, body)
+    [HttpPut("{id}")]
     public async Task<IActionResult> UpdateProduct(int id, Product product)
     {
         if (id != product.Id) return BadRequest("ID uyuşmazlığı.");
@@ -62,8 +62,8 @@ public class ProductController : ControllerBase
         return NoContent();
     }
 
-    // DELETE: api/urunler/urun-sil/5
-    [HttpDelete("urun-sil/{id}")]
+    // Frontend: api.delete(`/api/products/${id}`)
+    [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteProduct(int id)
     {
         var product = await _context.Products.FindAsync(id);

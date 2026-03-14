@@ -5,7 +5,7 @@ using FabrikaBackend.Models;
 
 namespace FabrikaBackend.Controllers;
 
-[Route("api/musteriler")]
+[Route("api/Customer")] // Frontend: api/Customer/... bekliyor
 [ApiController]
 public class CustomerController : ControllerBase
 {
@@ -16,15 +16,24 @@ public class CustomerController : ControllerBase
         _context = context;
     }
 
-    // GET: api/musteriler/musteri-listele
-    [HttpGet("musteri-listele")]
+    // Frontend: api.get('/api/Customer/tum-musteri-listesi')
+    [HttpGet("tum-musteri-listesi")]
     public async Task<ActionResult<IEnumerable<Customer>>> GetCustomers()
     {
         return await _context.Customers.ToListAsync();
     }
 
-    // POST: api/musteriler/musteri-ekle
-    [HttpPost("musteri-ekle")]
+    // Frontend: api.get(`/api/Customer/musteri-detay-getir/${id}`)
+    [HttpGet("musteri-detay-getir/{id}")]
+    public async Task<ActionResult<Customer>> GetCustomer(string id)
+    {
+        var customer = await _context.Customers.FindAsync(id);
+        if (customer == null) return NotFound("Müşteri bulunamadı.");
+        return customer;
+    }
+
+    // Frontend: api.post('/api/Customer/yeni-musteri-kaydi-ekle', body)
+    [HttpPost("yeni-musteri-kaydi-ekle")]
     public async Task<ActionResult<Customer>> CreateCustomer(Customer customer)
     {
         if (string.IsNullOrEmpty(customer.Id))
@@ -38,8 +47,8 @@ public class CustomerController : ControllerBase
         return Ok(customer);
     }
 
-    // PUT: api/musteriler/musteri-guncelle/M1
-    [HttpPut("musteri-guncelle/{id}")]
+    // Frontend: api.put(`/api/Customer/musteri-bilgisi-guncelle/${id}`, body)
+    [HttpPut("musteri-bilgisi-guncelle/{id}")]
     public async Task<IActionResult> UpdateCustomer(string id, Customer customer)
     {
         if (id != customer.Id) return BadRequest("Girdiğiniz ID ile müşteri ID'si uyuşmuyor!");
@@ -59,8 +68,8 @@ public class CustomerController : ControllerBase
         return NoContent();
     }
 
-    // DELETE: api/musteriler/musteri-sil/M1
-    [HttpDelete("musteri-sil/{id}")]
+    // Frontend: api.delete(`/api/Customer/musteri-kaydi-sil/${id}`)
+    [HttpDelete("musteri-kaydi-sil/{id}")]
     public async Task<IActionResult> DeleteCustomer(string id)
     {
         var customer = await _context.Customers.FindAsync(id);
