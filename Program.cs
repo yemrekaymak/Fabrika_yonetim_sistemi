@@ -12,37 +12,35 @@ var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("SqliteConnection") ?? "Data Source=fabrika.db";
 builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlite(connectionString));
 
-// --- 2. AUTHENTICATION ---
+// --- 2. AUTHENTICATION (401 HATALARI İÇİN KALICI ÇÖZÜM) ---
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options => {
         options.TokenValidationParameters = new TokenValidationParameters {
-            ValidateIssuer = true,
-            ValidateAudience = true,
+            // Render ve localhost arasındaki URL uyumsuzluklarını önlemek için:
+            ValidateIssuer = false, 
+            ValidateAudience = false,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidAudience = builder.Configuration["Jwt:Audience"],
+            // Key'in en az 16 karakter olduğundan emin olun
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? "CokGizliAnahtar123!"))
         };
     });
 
-// --- 3. CORS AYARI (HAYAT KURTARAN DÜZENLEME) ---
-// Render'da yayınladığın için originleri daha esnek tutmalıyız
+// --- 3. CORS AYARI (CORS HATALARI İÇİN TAM ÇÖZÜM) ---
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("FrontendPolicy", policy =>
     {
-        policy.AllowAnyOrigin()    // Render ve Localhost arasındaki bariyeri kaldırır
-              .AllowAnyMethod()    // GET, POST, PUT, DELETE hepsine izin verir
-              .AllowAnyHeader();   // Authorization header'ına izin verir
-        // NOT: AllowAnyOrigin varken AllowCredentials() kullanılmaz, o yüzden sildim.
+        policy.SetIsOriginAllowed(origin => true) // Tüm kaynaklara (localhost ve Render) izin ver
+              .AllowAnyMethod()                   // GET, POST, PUT, DELETE, PATCH
+              .AllowAnyHeader();                  // Authorization, Content-Type vb.
     });
 });
 
 // --- 4. DİĞER SERVİSLER ---
 builder.Services.AddControllers().AddJsonOptions(o => {
     o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
-    // JSON isimlendirmesinde frontend ile çakışma olmaması için:
+    // Frontend (gider_adi) ve Backend (GiderAdi) arasındaki büyük/küçük harf sorununu çözer:
     o.JsonSerializerOptions.PropertyNamingPolicy = null; 
 });
 builder.Services.AddHttpClient();
@@ -57,21 +55,24 @@ using (var scope = app.Services.CreateScope()) {
     context.Database.EnsureCreated();
 }
 
-// --- MIDDLEWARE SIRALAMASI ---
+// --- MIDDLEWARE SIRALAMASI (BU SIRA ÇOK KRİTİK!) ---
 app.UseSwagger();
 app.UseSwaggerUI(c => { 
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "V1"); 
     c.RoutePrefix = string.Empty; 
 });
 
-// Sıralama Kritiktir:
-app.UseRouting(); // Rotaları belirle
+// 1. Rotalama
+app.UseRouting(); 
 
-app.UseCors("FrontendPolicy"); // CORS her zaman Auth'dan önce gelmeli!
+// 2. CORS (Mutlaka Auth'dan önce gelmeli ki tarayıcı isteği reddetmesin)
+app.UseCors("FrontendPolicy");
 
+// 3. Yetkilendirme
 app.UseAuthentication();
 app.UseAuthorization();
 
+// 4. Endpointler
 app.MapControllers();
 
 app.Run();
