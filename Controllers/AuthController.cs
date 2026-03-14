@@ -35,7 +35,6 @@ public class AuthController : ControllerBase
         {
             Email = request.Email,
             Password = request.Password, // Gerçek hayatta şifrelenir
-            Role = "Admin" // DTO'dan kestiğimiz için buraya ellerimizle sabitledik!
         };
 
         _context.Users.Add(newUser);
