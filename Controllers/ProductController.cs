@@ -5,7 +5,7 @@ using FabrikaBackend.Models;
 
 namespace FabrikaBackend.Controllers;
 
-[Route("api/[controller]")] // api/Product olarak düzeltildi
+[Route("api/urunler")]
 [ApiController]
 public class ProductController : ControllerBase
 {
@@ -16,21 +16,24 @@ public class ProductController : ControllerBase
         _context = context;
     }
 
-    [HttpGet]
+    // GET: api/urunler/urun-listesi
+    [HttpGet("urun-listesi")]
     public async Task<ActionResult<IEnumerable<Product>>> GetProducts()
     {
         return await _context.Products.ToListAsync();
     }
 
-    [HttpGet("{id}")]
-    public async Task<ActionResult<Product>> GetProduct(int id) // String olan id'yi int yaptık
+    // GET: api/urunler/urun-getir/5
+    [HttpGet("urun-getir/{id}")]
+    public async Task<ActionResult<Product>> GetProduct(int id)
     {
         var product = await _context.Products.FindAsync(id);
-        if (product == null) return NotFound("Product not found.");
+        if (product == null) return NotFound("Ürün bulunamadı.");
         return product;
     }
 
-    [HttpPost]
+    // POST: api/urunler/urun-ekle
+    [HttpPost("urun-ekle")]
     public async Task<ActionResult<Product>> CreateProduct(Product product)
     {
         _context.Products.Add(product);
@@ -38,10 +41,11 @@ public class ProductController : ControllerBase
         return CreatedAtAction(nameof(GetProduct), new { id = product.Id }, product);
     }
 
-    [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateProduct(int id, Product product) // String olan id'yi int yaptık
+    // PUT: api/urunler/urun-guncelle/5
+    [HttpPut("urun-guncelle/{id}")]
+    public async Task<IActionResult> UpdateProduct(int id, Product product)
     {
-        if (id != product.Id) return BadRequest("ID mismatch.");
+        if (id != product.Id) return BadRequest("ID uyuşmazlığı.");
 
         _context.Entry(product).State = EntityState.Modified;
 
@@ -51,18 +55,19 @@ public class ProductController : ControllerBase
         }
         catch (DbUpdateConcurrencyException)
         {
-            if (!_context.Products.Any(e => e.Id == id)) return NotFound("Product not found.");
+            if (!_context.Products.Any(e => e.Id == id)) return NotFound("Güncellenecek ürün bulunamadı.");
             else throw;
         }
 
         return NoContent();
     }
 
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteProduct(int id) // String olan id'yi int yaptık
+    // DELETE: api/urunler/urun-sil/5
+    [HttpDelete("urun-sil/{id}")]
+    public async Task<IActionResult> DeleteProduct(int id)
     {
         var product = await _context.Products.FindAsync(id);
-        if (product == null) return NotFound("Product not found.");
+        if (product == null) return NotFound("Silinecek ürün bulunamadı.");
 
         _context.Products.Remove(product);
         await _context.SaveChangesAsync();

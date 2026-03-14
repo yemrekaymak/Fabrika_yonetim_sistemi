@@ -16,15 +16,13 @@ public class MachineController : ControllerBase
         _context = context;
     }
 
-    // TÜM MAKİNELERİ GETİR
-    [HttpGet]
+    [HttpGet("makine-listesi")]
     public async Task<ActionResult<IEnumerable<Machine>>> GetMachines()
     {
         return await _context.Machines.ToListAsync();
     }
 
-    // YENİ MAKİNE EKLE
-    [HttpPost]
+    [HttpPost("makine-ekle")]
     public async Task<ActionResult<Machine>> PostMachine(Machine machine)
     {
         _context.Machines.Add(machine);
@@ -32,8 +30,7 @@ public class MachineController : ControllerBase
         return CreatedAtAction(nameof(GetMachines), new { id = machine.Id }, machine);
     }
 
-    // GÜNCELLEME (PUT)
-    [HttpPut("{id}")]
+    [HttpPut("makine-guncelle/{id}")]
     public async Task<IActionResult> PutMachine(int id, Machine machine)
     {
         if (id != machine.Id)
@@ -62,9 +59,7 @@ public class MachineController : ControllerBase
         return NoContent();
     }
 
-    
-    // MAKİNE SİL
-    [HttpDelete("{id}")]
+    [HttpDelete("makine-sil/{id}")]
     public async Task<IActionResult> DeleteMachine(int id)
     {
         var machine = await _context.Machines.FindAsync(id);

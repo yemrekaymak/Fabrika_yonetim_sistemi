@@ -16,18 +16,17 @@ public class CustomerController : ControllerBase
         _context = context;
     }
 
-    // 1. GET: api/musteriler (Tüm müşterileri listele - Front-end'in istediği)
-    [HttpGet]
+    // GET: api/musteriler/musteri-listele
+    [HttpGet("musteri-listele")]
     public async Task<ActionResult<IEnumerable<Customer>>> GetCustomers()
     {
         return await _context.Customers.ToListAsync();
     }
 
-    // 3. POST: api/musteriler (Yeni Müşteri Ekle - Admin için!)
-    [HttpPost]
+    // POST: api/musteriler/musteri-ekle
+    [HttpPost("musteri-ekle")]
     public async Task<ActionResult<Customer>> CreateCustomer(Customer customer)
     {
-        // Eğer Front-end Id göndermezse, biz "M-1045" formatında otomatik üretelim!
         if (string.IsNullOrEmpty(customer.Id))
         {
             customer.Id = "M-" + new Random().Next(1000, 9999);
@@ -39,8 +38,8 @@ public class CustomerController : ControllerBase
         return Ok(customer);
     }
 
-    // 4. PUT: api/musteriler/M1 (Müşteri Bilgilerini Güncelle)
-    [HttpPut("{id}")]
+    // PUT: api/musteriler/musteri-guncelle/M1
+    [HttpPut("musteri-guncelle/{id}")]
     public async Task<IActionResult> UpdateCustomer(string id, Customer customer)
     {
         if (id != customer.Id) return BadRequest("Girdiğiniz ID ile müşteri ID'si uyuşmuyor!");
@@ -60,8 +59,8 @@ public class CustomerController : ControllerBase
         return NoContent();
     }
 
-    // 5. DELETE: api/musteriler/M1 (Müşteriyi Sistemden Sil)
-    [HttpDelete("{id}")]
+    // DELETE: api/musteriler/musteri-sil/M1
+    [HttpDelete("musteri-sil/{id}")]
     public async Task<IActionResult> DeleteCustomer(string id)
     {
         var customer = await _context.Customers.FindAsync(id);
