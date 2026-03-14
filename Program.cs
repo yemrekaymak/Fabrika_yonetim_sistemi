@@ -5,54 +5,43 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// --- 1. SERVİS YAPILANDIRMALARI (builder.Build() öncesi her şey burada olmalı) ---
-
-// CORS Ayarı (Arkadaşının hatasını çözen kısım burası)
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("HerkesGelsin", policyBuilder =>
-    {
-        policyBuilder
-            .AllowAnyOrigin()
-            .AllowAnyMethod()
-            .AllowAnyHeader();
-    });
-});
-
-// JSON ve Enum Ayarları
-builder.Services.AddControllers()
-    .AddJsonOptions(options => 
-        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
-
-// Veritabanı Bağlantı Ayarı (Railway & SQLite Otomatik Seçim)
+// --- 1. VERİTABANI BAĞLANTISI (OTOMATİK SEÇİM & FORMAT DÖNÜŞTÜRME) ---
 var rawConnectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
 string? connectionString;
 
 if (!string.IsNullOrEmpty(rawConnectionString) && (rawConnectionString.StartsWith("postgres://") || rawConnectionString.StartsWith("postgresql://")))
 {
+    // Railway'in "postgres://" veya "postgresql://" formatını Npgsql'in anlayacağı "Host=..." formatına çeviriyoruz
     var databaseUri = new Uri(rawConnectionString);
     var userInfo = databaseUri.UserInfo.Split(':');
+    
     connectionString = $"Host={databaseUri.Host};Port={databaseUri.Port};Database={databaseUri.LocalPath.Substring(1)};" +
                        $"Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
+    Console.WriteLine($"--> [DB] PostgreSQL bağlantısı kullanılıyor: {connectionString.Replace(userInfo[1], "***")}");
 }
 else
 {
+    // Yereldeysen appsettings.json'daki SqliteConnection'ı kullan
     connectionString = rawConnectionString ?? builder.Configuration.GetConnectionString("SqliteConnection") ?? "Data Source=fabrika.db";
+    Console.WriteLine($"--> [DB] SQLite bağlantısı kullanılıyor: {connectionString}");
 }
 
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
     if (connectionString.Contains("Host="))
+    {
         options.UseNpgsql(connectionString);
+    }
     else
+    {
         options.UseSqlite(connectionString);
+    }
 });
 
-// JWT Ayarları
+// --- 2. AUTHENTICATION & JWT YAPILANDIRMASI ---
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -68,30 +57,35 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
+// --- 3. JSON VE ENUM AYARLARI ---
+builder.Services.AddControllers()
+    .AddJsonOptions(options => 
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+
 builder.Services.AddHttpClient();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Fabrika API", Version = "v1" });
+    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo { Title = "Fabrika API", Version = "v1" });
 
-    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
     {
         Name = "Authorization",
-        Type = SecuritySchemeType.ApiKey,
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
         Scheme = "Bearer",
         BearerFormat = "JWT",
-        In = ParameterLocation.Header,
-        Description = "Token girin: Bearer {token}"
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Description = "JWT token girin: Bearer {token}"
     });
 
-    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
     {
         {
-            new OpenApiSecurityScheme
+            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
             {
-                Reference = new OpenApiReference
+                Reference = new Microsoft.OpenApi.Models.OpenApiReference
                 {
-                    Type = ReferenceType.SecurityScheme,
+                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
                     Id = "Bearer"
                 }
             },
@@ -100,38 +94,52 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Arka plan üretim takip servisini sisteme ekle
-builder.Services.AddHostedService<ProductionTrackerService>();
+// --- 4. CORS ---
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("HerkesGelsin", policyBuilder =>
+    {
+        policyBuilder
+            .AllowAnyOrigin()
+            .AllowAnyMethod()
+            .AllowAnyHeader();
+    });
+});
 
-// --- 2. UYGULAMA İNŞA ET (Build) ---
+// --- 5. OTONOM TAKİP SERVİSİ ---
+// builder.Services.AddHostedService<ProductionTrackerService>(); // Tetikleyici mantık kaldırıldı
+
 var app = builder.Build();
 
-// --- 3. VERİTABANI OTOMASYONU (Migration & EnsureCreated) ---
+// --- 🛠️ VERİTABANI OTOMASYONU ---
 using (var scope = app.Services.CreateScope())
 {
-    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    try 
+    var services = scope.ServiceProvider;
+    try
     {
-        context.Database.Migrate(); // Migrationları basar
-        Console.WriteLine("--> Database hazır.");
+        var context = services.GetRequiredService<AppDbContext>();
+        
+        Console.WriteLine("--> [DB] Migration'lar uygulanıyor...");
+        context.Database.Migrate();
+        Console.WriteLine("--> [BAŞARILI] Tüm migration'lar uygulandı ve tablolar oluşturuldu.");
     }
-    catch { context.Database.EnsureCreated(); } // Migration yoksa direkt oluşturur
+    catch (Exception ex)
+    {
+        Console.WriteLine($"--> [HATA] Veritabanı hazırlığı sırasında hata: {ex.Message}");
+        Console.WriteLine($"--> [DETAY] {ex.InnerException?.Message}");
+    }
 }
 
-// --- 4. MIDDLEWARE SIRALAMASI (Sıralama çok önemli!) ---
-
+// --- 6. MIDDLEWARE SIRALAMASI ---
 app.UseSwagger();
 app.UseSwaggerUI(c => {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "Fabrika API V1");
     c.RoutePrefix = string.Empty; 
 });
 
-// CORS Middleware'i Authentication'dan ÖNCE gelmeli
 app.UseCors("HerkesGelsin"); 
-
 app.UseAuthentication(); 
 app.UseAuthorization();
-
 app.MapControllers();
 
 app.Run();

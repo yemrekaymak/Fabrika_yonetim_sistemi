@@ -3,6 +3,7 @@ using System;
 using FabrikaBackend.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,12 +11,14 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FabrikaBackend.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260306162026_InitialCreateForAI")]
+    partial class InitialCreateForAI
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "9.0.2");
+            modelBuilder.HasAnnotation("ProductVersion", "9.0.1");
 
             modelBuilder.Entity("FabrikaBackend.Models.Customer", b =>
                 {
@@ -238,10 +241,6 @@ namespace FabrikaBackend.Migrations
                         .HasColumnType("INTEGER")
                         .HasAnnotation("Relational:JsonPropertyName", "calisan_sayisi");
 
-                    b.Property<int>("CurrentStock")
-                        .HasColumnType("INTEGER")
-                        .HasAnnotation("Relational:JsonPropertyName", "current_stock");
-
                     b.Property<int>("GunlukUretim")
                         .HasColumnType("INTEGER")
                         .HasAnnotation("Relational:JsonPropertyName", "gunluk_uretim");
@@ -331,6 +330,30 @@ namespace FabrikaBackend.Migrations
                     b.HasKey("Code");
 
                     b.ToTable("Stocks");
+                });
+
+            modelBuilder.Entity("FabrikaBackend.Models.StockTransaction", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProductId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("StockTransactions");
                 });
 
             modelBuilder.Entity("FabrikaBackend.Models.User", b =>

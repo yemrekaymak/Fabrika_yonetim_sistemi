@@ -15,8 +15,4 @@ public class Machine
 
     [JsonPropertyName("is_used")]
     public bool IsUsed { get; set; }
-
-    // Hangi firmaya ait makine
-    [JsonPropertyName("companyId")]
-    public int CompanyId { get; set; }
 }

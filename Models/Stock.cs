@@ -5,18 +5,19 @@ namespace FabrikaBackend.Models;
 
 public class Stock
 {
-    [Key]
-    [JsonPropertyName("id")]
-    public int Id { get; set; }
-
-    [JsonPropertyName("stokKodu")]
-    public string Code { get; set; } = string.Empty;
+    [Key] // Veritabanı için kimlik (Primary Key)
+    [JsonPropertyName("kod")]
+    public string Code { get; set; } = string.Empty; // Örn: STK-001
 
     [JsonPropertyName("ad")]
     public string Name { get; set; } = string.Empty;
 
+    // Front-end'in istediği o ince detay: Biri ekranda göstermek, diğeri hesaplamak için!
+    [JsonPropertyName("miktar")]
+    public string QuantityText { get; set; } = string.Empty; // Örn: "450 Adet"
+
     [JsonPropertyName("miktarSayi")]
-    public double Quantity { get; set; }
+    public double Quantity { get; set; } // Örn: 450
 
     [JsonPropertyName("kapasite")]
     public double Capacity { get; set; }
@@ -31,9 +32,5 @@ public class Stock
     public decimal UnitPrice { get; set; }
 
     [JsonPropertyName("durum")]
-    public string Status { get; set; } = string.Empty;
-
-    // Hangi firmaya ait stok
-    [JsonPropertyName("companyId")]
-    public int CompanyId { get; set; }
+    public string Status { get; set; } = string.Empty; // "kritik" veya "yeterli"
 }

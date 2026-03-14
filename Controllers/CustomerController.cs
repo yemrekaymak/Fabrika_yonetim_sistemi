@@ -1,117 +1,75 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using FabrikaBackend.Data;
 using FabrikaBackend.Models;
-using FabrikaBackend.Data; // DbContext klasörün farklıysa burayı düzelt
-using Microsoft.AspNetCore.Authorization;
 
-namespace FabrikaBackend.Controllers
+namespace FabrikaBackend.Controllers;
+
+[Route("api/musteriler")]
+[ApiController]
+public class CustomerController : ControllerBase
 {
-    [ApiController]
-    [Route("api/[controller]")]
-    [Authorize]
-    public class CustomerController : ControllerBase
+    private readonly AppDbContext _context;
+
+    public CustomerController(AppDbContext context)
     {
-        private readonly AppDbContext _context;
+        _context = context;
+    }
 
-        public CustomerController(AppDbContext context)
+    // 1. GET: api/musteriler (Tüm müşterileri listele - Front-end'in istediği)
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<Customer>>> GetCustomers()
+    {
+        return await _context.Customers.ToListAsync();
+    }
+
+    // 3. POST: api/musteriler (Yeni Müşteri Ekle - Admin için!)
+    [HttpPost]
+    public async Task<ActionResult<Customer>> CreateCustomer(Customer customer)
+    {
+        // Eğer Front-end Id göndermezse, biz "M-1045" formatında otomatik üretelim!
+        if (string.IsNullOrEmpty(customer.Id))
         {
-            _context = context;
+            customer.Id = "M-" + new Random().Next(1000, 9999);
         }
 
-        private int GetCompanyId() =>
-            int.Parse(User.FindFirst("company_id")!.Value);
+        _context.Customers.Add(customer);
+        await _context.SaveChangesAsync();
 
-        // 1. TÜM MÜŞTERİLERİ LİSTELE
-        [HttpGet("tum-musteri-listesi")]
-        public async Task<ActionResult<IEnumerable<Customer>>> GetCustomers()
+        return Ok(customer);
+    }
+
+    // 4. PUT: api/musteriler/M1 (Müşteri Bilgilerini Güncelle)
+    [HttpPut("{id}")]
+    public async Task<IActionResult> UpdateCustomer(string id, Customer customer)
+    {
+        if (id != customer.Id) return BadRequest("Girdiğiniz ID ile müşteri ID'si uyuşmuyor!");
+
+        _context.Entry(customer).State = EntityState.Modified;
+
+        try
         {
-            var companyId = GetCompanyId();
-            return await _context.Customers
-                .Where(c => c.CompanyId == companyId)
-                .ToListAsync();
-        }
-
-        // 2. ID'YE GÖRE MÜŞTERİ BUL (Senin özellikle istediğin kısım)
-        [HttpGet("musteri-detay-getir/{id}")]
-        public async Task<ActionResult<Customer>> GetCustomerById(int id)
-        {
-            var companyId = GetCompanyId();
-            var customer = await _context.Customers
-                .FirstOrDefaultAsync(c => c.Id == id && c.CompanyId == companyId);
-
-            if (customer == null)
-            {
-                return NotFound(new { mesaj = $"{id} numaralı müşteri sistemde bulunamadı." });
-            }
-
-            return customer;
-        }
-
-        // 3. YENİ MÜŞTERİ EKLE
-        [HttpPost("yeni-musteri-kaydi-ekle")]
-        public async Task<ActionResult<Customer>> AddCustomer(Customer customer)
-        {
-            var companyId = GetCompanyId();
-            customer.CompanyId = companyId;
-
-            _context.Customers.Add(customer);
             await _context.SaveChangesAsync();
-
-            return CreatedAtAction(nameof(GetCustomerById), new { id = customer.Id }, customer);
         }
-
-        // 4. MÜŞTERİ BİLGİLERİNİ GÜNCELLE
-        [HttpPut("musteri-bilgisi-guncelle/{id}")]
-        public async Task<IActionResult> UpdateCustomer(int id, Customer customer)
+        catch (DbUpdateConcurrencyException)
         {
-            var companyId = GetCompanyId();
-            if (id != customer.Id) return BadRequest(new { mesaj = "ID uyuşmazlığı!" });
-
-            var existing = await _context.Customers
-                .AsNoTracking()
-                .FirstOrDefaultAsync(c => c.Id == id && c.CompanyId == companyId);
-
-            if (existing == null)
-            {
-                return NotFound(new { mesaj = "Güncellenecek müşteri bulunamadı." });
-            }
-
-            customer.CompanyId = companyId;
-            _context.Entry(customer).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!CustomerExists(id)) return NotFound();
-                else throw;
-            }
-
-            return Ok(new { mesaj = "Müşteri başarıyla güncellendi." });
+            if (!_context.Customers.Any(e => e.Id == id)) return NotFound("Güncellenecek müşteri bulunamadı.");
+            else throw;
         }
 
-// ... (Dosyanın üst kısımları aynı kalacak, sadece en altı veya tamamını değiştirebilirsin)
+        return NoContent();
+    }
 
-        [HttpDelete("musteri-kaydi-sil/{id}")]
-        public async Task<IActionResult> DeleteCustomer(int id)
-        {
-            var companyId = GetCompanyId();
-            var customer = await _context.Customers
-                .FirstOrDefaultAsync(c => c.Id == id && c.CompanyId == companyId);
-            if (customer == null) return NotFound();
+    // 5. DELETE: api/musteriler/M1 (Müşteriyi Sistemden Sil)
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteCustomer(string id)
+    {
+        var customer = await _context.Customers.FindAsync(id);
+        if (customer == null) return NotFound("Silinecek müşteri bulunamadı.");
 
-            _context.Customers.Remove(customer);
-            await _context.SaveChangesAsync();
+        _context.Customers.Remove(customer);
+        await _context.SaveChangesAsync();
 
-            return Ok(new { mesaj = "Müşteri sistemden silindi." });
-        }
-
-        private bool CustomerExists(int id)
-        {
-            // DÜZELTİLDİ: = yerine == kullanıldı
-            return _context.Customers.Any(e => e.Id == id); 
-        }
+        return NoContent();
     }
 }

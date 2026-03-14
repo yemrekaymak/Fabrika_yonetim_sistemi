@@ -1,19 +1,23 @@
-# 1. Aşama: Build (SDK versiyonunu 9.0 yapıyoruz)
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+# 1. Derleme Aşaması
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# Her şeyi kopyala
+# Proje dosyasını kopyala ve restore et
+# Eğer .csproj dosyan bir alt klasördeyse yolu "KlasörAdı/*.csproj" yapmalısın
+COPY *.csproj ./
+RUN dotnet restore
+
+# Kalan her şeyi kopyala ve yayınla
 COPY . .
+RUN dotnet publish -c Release -o /app/out
 
-# Restore ve Publish işlemlerini yap
-RUN dotnet restore "FabrikaBackend.csproj"
-RUN dotnet publish "FabrikaBackend.csproj" -c Release -o /app/out
-
-# 2. Aşama: Runtime (Runtime versiyonunu da 9.0 yapıyoruz)
-FROM mcr.microsoft.com/dotnet/aspnet:9.0
+# 2. Çalıştırma Aşaması
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
+# Build aşamasında /app/out klasörüne attığımız dosyaları buraya alıyoruz
 COPY --from=build /app/out .
 
+# Render/Railway port ayarı (Genelde 10000 kullanılır ama dinamik olması iyidir)
 ENV ASPNETCORE_URLS=http://+:10000
 EXPOSE 10000
 

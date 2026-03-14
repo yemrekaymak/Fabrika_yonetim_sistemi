@@ -9,12 +9,4 @@ public class UserRegisterDto
 
     [JsonPropertyName("password")]
     public string Password { get; set; } = string.Empty;
-
-    // Şifre tekrar alanı (frontend'de "şifre tekrarı")
-    [JsonPropertyName("confirmPassword")]
-    public string ConfirmPassword { get; set; } = string.Empty;
-
-    // Firma adı (A Firması, B Firması gibi)
-    [JsonPropertyName("companyName")]
-    public string CompanyName { get; set; } = string.Empty;
 }

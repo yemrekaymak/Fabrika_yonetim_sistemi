@@ -1,33 +1,33 @@
 using System;
-using System.ComponentModel.DataAnnotations; // [Key] ve [Required] için gerekli
-using System.Text.Json.Serialization;      // [JsonPropertyName] için gerekli
+using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace FabrikaBackend.Models;
 
-public class Orders
+public class Order
 {
     [Key]
     [JsonPropertyName("id")]
     public int Id { get; set; }
 
-    [Required]
-    [JsonPropertyName("musteri_adi")]
-    public string MusteriAdi { get; set; } = string.Empty;
+    [JsonPropertyName("product_id")]
+    public int ProductId { get; set; }
 
-    [Required]
-    [JsonPropertyName("urun_adi")]
-    public string UrunAdi { get; set; } = string.Empty;
+    [JsonPropertyName("quantity")]
+    public int Quantity { get; set; }
 
-    [JsonPropertyName("miktar")]
-    public int Miktar { get; set; }
+    [JsonPropertyName("estimated_hour")]
+    public double EstimatedDays { get; set; }
+
+    [JsonPropertyName("total_cost")]    
+    public double TotalCost { get; set; }
+
+    [JsonPropertyName("sale_price")]
+    public double SalePrice { get; set; }
 
     [JsonPropertyName("status")]
     public string Status { get; set; } = "pending";
 
     [JsonPropertyName("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-    // Hangi firmaya ait sipariş
-    [JsonPropertyName("companyId")]
-    public int CompanyId { get; set; }
 }

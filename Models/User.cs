@@ -17,8 +17,4 @@ public class User
 
     [JsonPropertyName("role")]
     public string Role { get; set; } = "Personel"; // "Admin" veya "Personel" olacak
-
-    // Kullanıcının bağlı olduğu firma
-    [JsonPropertyName("companyId")]
-    public int CompanyId { get; set; }
 }

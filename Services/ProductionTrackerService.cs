@@ -29,10 +29,30 @@ public class ProductionTrackerService : BackgroundService
                 {
                     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-                    // Yalnızca veritabanı bağlantısını ve tablonun hazır olup olmadığını kontrol ediyoruz.
+                    // 🚀 ZIRH 2: Veritabanı bağlantısını sorgulamadan işleme girmez.
                     if (await context.Database.CanConnectAsync(stoppingToken))
                     {
-                        _logger.LogInformation("--> [KONTROL] Veritabanı bağlantısı sağlıklı.");
+                        _logger.LogInformation("--> [KONTROL] Üretim hattı taranıyor...");
+
+                        // Sorgu alanı: Tablo yoksa catch bloğuna düşer, uygulama ÇÖKMEZ.
+                        var activeOrders = await context.Orders
+                            .Where(o => o.Status == "Producing")
+                            .ToListAsync(stoppingToken);
+
+                        foreach (var order in activeOrders)
+                        {
+                            // 5 saniye kuralı: Otonom üretim tamamlama
+                            if (DateTime.UtcNow >= order.CreatedAt.AddSeconds(5)) 
+                            {
+                                _logger.LogInformation("--> [TAMAMLANDI] Sipariş {id} üretildi!", order.Id);
+                                order.Status = "Completed"; 
+                            }
+                        }
+                        
+                        if (activeOrders.Any())
+                        {
+                            await context.SaveChangesAsync(stoppingToken);
+                        }
                     }
                 }
             }
