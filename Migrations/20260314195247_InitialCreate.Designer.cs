@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FabrikaBackend.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260314193200_UpdatePendingChanges")]
-    partial class UpdatePendingChanges
+    [Migration("20260314195247_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

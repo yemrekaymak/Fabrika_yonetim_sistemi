@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace FabrikaBackend.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreateForAI : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -24,6 +24,35 @@ namespace FabrikaBackend.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Customers", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Expenses",
+                columns: table => new
+                {
+                    GiderAdi = table.Column<string>(type: "TEXT", nullable: false),
+                    Tutar = table.Column<double>(type: "REAL", nullable: false),
+                    GiderTipi = table.Column<string>(type: "TEXT", nullable: false),
+                    Tarih = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    CompanyId = table.Column<int>(type: "INTEGER", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Expenses", x => x.GiderAdi);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Incomes",
+                columns: table => new
+                {
+                    GelirAdi = table.Column<string>(type: "TEXT", nullable: false),
+                    Tutar = table.Column<double>(type: "REAL", nullable: false),
+                    Tarih = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    CompanyId = table.Column<int>(type: "INTEGER", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Incomes", x => x.GelirAdi);
                 });
 
             migrationBuilder.CreateTable(
@@ -94,7 +123,8 @@ namespace FabrikaBackend.Migrations
                     MalzemeVerimi = table.Column<double>(type: "REAL", nullable: false),
                     CalisanSayisi = table.Column<int>(type: "INTEGER", nullable: false),
                     HasHeatTreatment = table.Column<bool>(type: "INTEGER", nullable: false),
-                    BaseCost = table.Column<double>(type: "REAL", nullable: false)
+                    BaseCost = table.Column<double>(type: "REAL", nullable: false),
+                    CurrentStock = table.Column<int>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -118,22 +148,6 @@ namespace FabrikaBackend.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Stocks", x => x.Code);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "StockTransactions",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    ProductId = table.Column<string>(type: "TEXT", nullable: false),
-                    Quantity = table.Column<int>(type: "INTEGER", nullable: false),
-                    Type = table.Column<int>(type: "INTEGER", nullable: false),
-                    Date = table.Column<DateTime>(type: "TEXT", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_StockTransactions", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -185,6 +199,12 @@ namespace FabrikaBackend.Migrations
                 name: "Customers");
 
             migrationBuilder.DropTable(
+                name: "Expenses");
+
+            migrationBuilder.DropTable(
+                name: "Incomes");
+
+            migrationBuilder.DropTable(
                 name: "Machines");
 
             migrationBuilder.DropTable(
@@ -195,9 +215,6 @@ namespace FabrikaBackend.Migrations
 
             migrationBuilder.DropTable(
                 name: "Stocks");
-
-            migrationBuilder.DropTable(
-                name: "StockTransactions");
 
             migrationBuilder.DropTable(
                 name: "Users");

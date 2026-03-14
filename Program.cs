@@ -8,45 +8,14 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// --- 1. VERİTABANI BAĞLANTISI (OTOMATİK SEÇİM & FORMAT DÖNÜŞTÜRME) ---
-var rawConnectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
-string? connectionString;
+// --- 1. VERİTABANI: SADECE SQLITE ---
+var connectionString = builder.Configuration.GetConnectionString("SqliteConnection") ?? "Data Source=fabrika.db";
+builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlite(connectionString));
 
-if (!string.IsNullOrEmpty(rawConnectionString) && (rawConnectionString.StartsWith("postgres://") || rawConnectionString.StartsWith("postgresql://")))
-{
-    // Railway'in "postgres://" veya "postgresql://" formatını Npgsql'in anlayacağı "Host=..." formatına çeviriyoruz
-    var databaseUri = new Uri(rawConnectionString);
-    var userInfo = databaseUri.UserInfo.Split(':');
-    
-    connectionString = $"Host={databaseUri.Host};Port={databaseUri.Port};Database={databaseUri.LocalPath.Substring(1)};" +
-                       $"Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
-    Console.WriteLine($"--> [DB] PostgreSQL bağlantısı kullanılıyor: {connectionString.Replace(userInfo[1], "***")}");
-}
-else
-{
-    // Yereldeysen appsettings.json'daki SqliteConnection'ı kullan
-    connectionString = rawConnectionString ?? builder.Configuration.GetConnectionString("SqliteConnection") ?? "Data Source=fabrika.db";
-    Console.WriteLine($"--> [DB] SQLite bağlantısı kullanılıyor: {connectionString}");
-}
-
-builder.Services.AddDbContext<AppDbContext>(options =>
-{
-    if (connectionString.Contains("Host="))
-    {
-        options.UseNpgsql(connectionString);
-    }
-    else
-    {
-        options.UseSqlite(connectionString);
-    }
-});
-
-// --- 2. AUTHENTICATION & JWT YAPILANDIRMASI ---
+// --- 2. AUTHENTICATION ---
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
+    .AddJwtBearer(options => {
+        options.TokenValidationParameters = new TokenValidationParameters {
             ValidateIssuer = true,
             ValidateAudience = true,
             ValidateLifetime = true,
@@ -57,89 +26,25 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-// --- 3. JSON VE ENUM AYARLARI ---
-builder.Services.AddControllers()
-    .AddJsonOptions(options => 
-        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
-
+// --- 3. DİĞER SERVİSLER ---
+builder.Services.AddControllers().AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddHttpClient();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c =>
-{
-    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo { Title = "Fabrika API", Version = "v1" });
-
-    c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
-    {
-        Name = "Authorization",
-        Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
-        Scheme = "Bearer",
-        BearerFormat = "JWT",
-        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
-        Description = "JWT token girin: Bearer {token}"
-    });
-
-    c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
-    {
-        {
-            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
-            {
-                Reference = new Microsoft.OpenApi.Models.OpenApiReference
-                {
-                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
-            },
-            new string[] {}
-        }
-    });
-});
-
-// --- 4. CORS ---
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("HerkesGelsin", policyBuilder =>
-    {
-        policyBuilder
-            .AllowAnyOrigin()
-            .AllowAnyMethod()
-            .AllowAnyHeader();
-    });
-});
-
-// --- 5. OTONOM TAKİP SERVİSİ ---
-// builder.Services.AddHostedService<ProductionTrackerService>(); // Tetikleyici mantık kaldırıldı
+builder.Services.AddSwaggerGen();
+builder.Services.AddCors(o => o.AddPolicy("HerkesGelsin", b => b.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
 
 var app = builder.Build();
 
-// --- 🛠️ VERİTABANI OTOMASYONU ---
-using (var scope = app.Services.CreateScope())
-{
-    var services = scope.ServiceProvider;
-    try
-    {
-        var context = services.GetRequiredService<AppDbContext>();
-        
-        Console.WriteLine("--> [DB] Migration'lar uygulanıyor...");
-        context.Database.Migrate();
-        Console.WriteLine("--> [BAŞARILI] Tüm migration'lar uygulandı ve tablolar oluşturuldu.");
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"--> [HATA] Veritabanı hazırlığı sırasında hata: {ex.Message}");
-        Console.WriteLine($"--> [DETAY] {ex.InnerException?.Message}");
-    }
+// --- 🛠️ OTOMATİK VERİTABANI OLUŞTURMA ---
+using (var scope = app.Services.CreateScope()) {
+    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    context.Database.EnsureCreated(); // Migration hatası almamak için en basit yol
 }
 
-// --- 6. MIDDLEWARE SIRALAMASI ---
 app.UseSwagger();
-app.UseSwaggerUI(c => {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Fabrika API V1");
-    c.RoutePrefix = string.Empty; 
-});
-
-app.UseCors("HerkesGelsin"); 
-app.UseAuthentication(); 
+app.UseSwaggerUI(c => { c.SwaggerEndpoint("/swagger/v1/swagger.json", "V1"); c.RoutePrefix = string.Empty; });
+app.UseCors("HerkesGelsin");
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
-
 app.Run();
