@@ -62,7 +62,7 @@ public class AuthController : ControllerBase
         // KRİTİK DÜZELTME 1: Anahtar (Key) Program.cs ile BİREBİR aynı olmalı
         // Config'den çekmek en güvenlisidir, yoksa Program.cs'deki fallback'i kullanıyoruz.
         var keyString = _configuration["Jwt:Key"] ?? "CokGizliAnahtar123!";
-        var key = Encoding.UTF8.GetBytes(keyString); 
+        var key = Encoding.UTF8.GetBytes("CokGizliAnahtar123!"); 
         
         var tokenDescriptor = new SecurityTokenDescriptor
         {
