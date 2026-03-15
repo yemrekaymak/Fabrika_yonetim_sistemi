@@ -16,31 +16,30 @@ builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlite(connect
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options => {
         options.TokenValidationParameters = new TokenValidationParameters {
-            // Render ve localhost arasındaki URL uyumsuzluklarını önlemek için:
             ValidateIssuer = false, 
             ValidateAudience = false,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            // Key'in en az 16 karakter olduğundan emin olun
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? "CokGizliAnahtar123!"))
         };
     });
 
-// --- 3. CORS AYARI (CORS HATALARI İÇİN TAM ÇÖZÜM) ---
+// --- 3. CORS AYARI (HAYAT KURTARAN DÜZENLEME) ---
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("FrontendPolicy", policy =>
+    options.AddPolicy("HerkesGelsin", policy =>
     {
-        policy.SetIsOriginAllowed(origin => true) // Tüm kaynaklara (localhost ve Render) izin ver
-              .AllowAnyMethod()                   // GET, POST, PUT, DELETE, PATCH
-              .AllowAnyHeader();                  // Authorization, Content-Type vb.
+        // Bu ayar tarayıcının "Preflight" isteğine yeşil ışık yakar
+        policy.SetIsOriginAllowed(origin => true) 
+              .AllowAnyMethod()
+              .AllowAnyHeader()
+              .WithExposedHeaders("Content-Disposition"); // Bazı tarayıcılar için ek güvenlik başlığı
     });
 });
 
 // --- 4. DİĞER SERVİSLER ---
 builder.Services.AddControllers().AddJsonOptions(o => {
     o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
-    // Frontend (gider_adi) ve Backend (GiderAdi) arasındaki büyük/küçük harf sorununu çözer:
     o.JsonSerializerOptions.PropertyNamingPolicy = null; 
 });
 builder.Services.AddHttpClient();
@@ -55,24 +54,26 @@ using (var scope = app.Services.CreateScope()) {
     context.Database.EnsureCreated();
 }
 
-// --- MIDDLEWARE SIRALAMASI (BU SIRA ÇOK KRİTİK!) ---
+// --- MIDDLEWARE SIRALAMASI (MÜHENDİS DOKUNUŞU) ---
+
+// 1. Swagger (Her zaman en üstte olabilir)
 app.UseSwagger();
 app.UseSwaggerUI(c => { 
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "V1"); 
     c.RoutePrefix = string.Empty; 
 });
 
-// 1. Rotalama
+// 2. Rotalama
 app.UseRouting(); 
 
-// 2. CORS (Mutlaka Auth'dan önce gelmeli ki tarayıcı isteği reddetmesin)
-app.UseCors("FrontendPolicy");
+// 3. CORS (Mevzu burası! Auth ve Authorization'dan MUTLAKA önce gelmeli)
+app.UseCors("HerkesGelsin");
 
-// 3. Yetkilendirme
+// 4. Güvenlik Katmanları
 app.UseAuthentication();
 app.UseAuthorization();
 
-// 4. Endpointler
+// 5. Endpointler
 app.MapControllers();
 
 app.Run();
