@@ -7,12 +7,14 @@ namespace FabrikaBackend.Models;
 
 public class Product
 {
+    // ID silindiği için bir alanı Key (Anahtar) yapmamız lazım. 
+    // Ürün kodu genellikle benzersizdir, o yüzden onu Key yapıyoruz.
     [Key]
-    [JsonPropertyName("id")]
-    public int Id { get; set; }
-
     [JsonPropertyName("urun_kodu")]
     public string UrunKodu { get; set; } = string.Empty;
+
+    [JsonPropertyName("urun_adi")]
+    public string UrunAdi { get; set; } = string.Empty; // Yeni eklendi
 
     [JsonPropertyName("ham_madde")]
     public string HamMadde { get; set; } = string.Empty;
@@ -23,16 +25,7 @@ public class Product
     [JsonPropertyName("pres_kategorisi")]
     public string PresKategorisi { get; set; } = string.Empty;
 
-    [JsonPropertyName("gunluk_uretim")]
-    public int GunlukUretim { get; set; }
-
-    [NotMapped]
-    [JsonPropertyName("net_daily_capacity")]
-    public double NetDailyCapacity => GunlukUretim * 0.85; 
-
-    [NotMapped]
-    [JsonPropertyName("monthly_capacity")]
-    public double MonthlyCapacity => NetDailyCapacity * 22;
+    // Günlük üretim, Aylık kapasite, Malzeme verimi, Çalışan sayısı, Heat Treatment silindi.
 
     [JsonPropertyName("brut_agirlik_kg")]
     public double BrutAgirlikKg { get; set; }
@@ -43,21 +36,12 @@ public class Product
     [JsonPropertyName("hurda_orani")]
     public double HurdaOrani { get; set; }
 
-    [JsonPropertyName("malzeme_verimi")]
-    public double MalzemeVerimi { get; set; }
-
-    [JsonPropertyName("calisan_sayisi")]
-    public int CalisanSayisi { get; set; }
-
-    [JsonPropertyName("has_heat_treatment")]
-    public bool HasHeatTreatment { get; set; }
-
     [JsonPropertyName("base_cost")]
     public double BaseCost { get; set; }
 
-    [JsonPropertyName("machines")]
-    public List<Machine> Machines { get; set; } = new List<Machine>();
-    
     [JsonPropertyName("current_stock")]
     public int CurrentStock { get; set; } = 0; 
+
+    [JsonPropertyName("machines")]
+    public List<Machine> Machines { get; set; } = new List<Machine>();
 }
