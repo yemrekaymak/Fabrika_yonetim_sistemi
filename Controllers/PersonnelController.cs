@@ -2,13 +2,13 @@ using Microsoft.AspNetCore.Mvc;
 using FabrikaBackend.Data;
 using FabrikaBackend.Models;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Authorization; // [Authorize] kullanacaksan gerekli
+using Microsoft.AspNetCore.Authorization;
 
 namespace FabrikaBackend.Controllers;
 
-[Route("api/[controller]")] // [controller] kullanımı 'Personnel' ismini otomatik alır
+[Route("api/[controller]")]
 [ApiController]
-[Authorize] // Güvenlik için: Token olmadan kimse personel listesine erişemesin
+[Authorize]
 public class PersonnelController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -18,72 +18,51 @@ public class PersonnelController : ControllerBase
         _context = context;
     }
 
-    // GET: api/Personnel/tum-personel-listesi
     [HttpGet("tum-personel-listesi")]
     public async Task<ActionResult<IEnumerable<Personnel>>> GetPersonnels()
     {
-        // Veritabanından departman alanı silindiği için ToList demen yeterli, EF otomatik eşler.
         return await _context.Personnels.ToListAsync();
     }
 
-    // GET: api/Personnel/personel-detay-getir/5
-    [HttpGet("personel-detay-getir/{id}")]
-    public async Task<ActionResult<Personnel>> GetPersonnel(int id)
-    {
-        var personnel = await _context.Personnels.FindAsync(id);
-        if (personnel == null) return NotFound(new { Mesaj = "Personel bulunamadı." });
-        return Ok(personnel);
-    }
-
-    // POST: api/Personnel/yeni-personel-ekle
     [HttpPost("yeni-personel-ekle")]
     public async Task<ActionResult<Personnel>> PostPersonnel(Personnel personnel)
     {
-        // Department alanı Model'den silindiyse, gelen JSON'da olsa bile EF bunu görmezden gelir.
+        if (_context.Personnels.Any(p => p.TcNo == personnel.TcNo))
+        {
+            return BadRequest(new { Mesaj = "Bu TC No zaten kayıtlı." });
+        }
+
         _context.Personnels.Add(personnel);
         await _context.SaveChangesAsync();
-        
-        return CreatedAtAction(nameof(GetPersonnel), new { id = personnel.Id }, personnel);
+        return Ok(personnel);
     }
 
-    // PUT: api/Personnel/personel-bilgisi-guncelle/5
-    [HttpPut("personel-bilgisi-guncelle/{id}")]
-    public async Task<IActionResult> PutPersonnel(int id, Personnel personnel)
+    // GÜNCELLEME: URL'den tcNo istemiyoruz, objenin içindekini kullanıyoruz
+    [HttpPut("personel-bilgisi-guncelle")]
+    public async Task<IActionResult> PutPersonnel(Personnel personnel)
     {
-        if (id != personnel.Id)
+        // Objenin içindeki TcNo'yu kontrol ediyoruz
+        var existing = await _context.Personnels.AnyAsync(p => p.TcNo == personnel.TcNo);
+        if (!existing)
         {
-            return BadRequest(new { Mesaj = "ID uyuşmazlığı!" });
+            return NotFound(new { Mesaj = "Güncellenecek personel bulunamadı." });
         }
 
-        // Entity State'i direkt değiştirmek yerine veritabanındaki kaydı kontrol etmek daha güvenlidir
         _context.Entry(personnel).State = EntityState.Modified;
-
-        try
-        {
-            await _context.SaveChangesAsync();
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            if (!_context.Personnels.Any(e => e.Id == id))
-            {
-                return NotFound(new { Mesaj = "Güncellenecek personel bulunamadı." });
-            }
-            throw;
-        }
-
-        return Ok(new { Mesaj = "Personel başarıyla güncellendi." });
+        await _context.SaveChangesAsync();
+        return Ok(new { Mesaj = "Bilgiler güncellendi." });
     }
 
-    // DELETE: api/Personnel/personel-kaydi-sil/5
-    [HttpDelete("personel-kaydi-sil/{id}")]
-    public async Task<IActionResult> DeletePersonnel(int id)
+    // SİLME: URL'den tcNo istemiyoruz, sadece personelin kendisini (body) gönderiyorlar
+    [HttpDelete("personel-kaydi-sil")]
+    public async Task<IActionResult> DeletePersonnel(Personnel personnel)
     {
-        var personnel = await _context.Personnels.FindAsync(id);
-        if (personnel == null) return NotFound(new { Mesaj = "Silinecek personel bulunamadı." });
+        // Frontend objeyi gönderdiğinde içindeki TcNo üzerinden bulup siliyoruz
+        var p = await _context.Personnels.FindAsync(personnel.TcNo);
+        if (p == null) return NotFound(new { Mesaj = "Silinecek kayıt bulunamadı." });
 
-        _context.Personnels.Remove(personnel);
+        _context.Personnels.Remove(p);
         await _context.SaveChangesAsync();
-        
-        return Ok(new { Mesaj = "Personel kaydı sistemden silindi." });
+        return Ok(new { Mesaj = "Kayıt silindi." });
     }
 }
