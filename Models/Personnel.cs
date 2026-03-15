@@ -37,10 +37,6 @@ namespace FabrikaBackend.Models
         [JsonPropertyName("telefon")]
         public string PhoneNumber { get; set; } = string.Empty;
 
-        // İş Bilgileri
-        [JsonPropertyName("departman")]
-        public string Department { get; set; } = string.Empty;
-
         [JsonPropertyName("pozisyon")]
         public string Position { get; set; } = string.Empty;
 

@@ -2,11 +2,13 @@ using Microsoft.AspNetCore.Mvc;
 using FabrikaBackend.Data;
 using FabrikaBackend.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization; // [Authorize] kullanacaksan gerekli
 
 namespace FabrikaBackend.Controllers;
 
-[Route("api/Personnel")] // Frontend: api/Personnel/... bekliyor
+[Route("api/[controller]")] // [controller] kullanımı 'Personnel' ismini otomatik alır
 [ApiController]
+[Authorize] // Güvenlik için: Token olmadan kimse personel listesine erişemesin
 public class PersonnelController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -16,40 +18,44 @@ public class PersonnelController : ControllerBase
         _context = context;
     }
 
-    // Frontend: api.get('/api/Personnel/tum-personel-listesi')
+    // GET: api/Personnel/tum-personel-listesi
     [HttpGet("tum-personel-listesi")]
     public async Task<ActionResult<IEnumerable<Personnel>>> GetPersonnels()
     {
+        // Veritabanından departman alanı silindiği için ToList demen yeterli, EF otomatik eşler.
         return await _context.Personnels.ToListAsync();
     }
 
-    // Frontend: api.get(`/api/Personnel/personel-detay-getir/${id}`)
+    // GET: api/Personnel/personel-detay-getir/5
     [HttpGet("personel-detay-getir/{id}")]
     public async Task<ActionResult<Personnel>> GetPersonnel(int id)
     {
         var personnel = await _context.Personnels.FindAsync(id);
-        if (personnel == null) return NotFound("Personel bulunamadı.");
-        return personnel;
-    }
-
-    // Frontend: api.post('/api/Personnel/yeni-personel-ekle', body)
-    [HttpPost("yeni-personel-ekle")]
-    public async Task<ActionResult<Personnel>> PostPersonnel(Personnel personnel)
-    {
-        _context.Personnels.Add(personnel);
-        await _context.SaveChangesAsync();
+        if (personnel == null) return NotFound(new { Mesaj = "Personel bulunamadı." });
         return Ok(personnel);
     }
 
-    // Frontend: api.put(`/api/Personnel/personel-bilgisi-guncelle/${id}`, body)
+    // POST: api/Personnel/yeni-personel-ekle
+    [HttpPost("yeni-personel-ekle")]
+    public async Task<ActionResult<Personnel>> PostPersonnel(Personnel personnel)
+    {
+        // Department alanı Model'den silindiyse, gelen JSON'da olsa bile EF bunu görmezden gelir.
+        _context.Personnels.Add(personnel);
+        await _context.SaveChangesAsync();
+        
+        return CreatedAtAction(nameof(GetPersonnel), new { id = personnel.Id }, personnel);
+    }
+
+    // PUT: api/Personnel/personel-bilgisi-guncelle/5
     [HttpPut("personel-bilgisi-guncelle/{id}")]
     public async Task<IActionResult> PutPersonnel(int id, Personnel personnel)
     {
         if (id != personnel.Id)
         {
-            return BadRequest("ID'ler uyuşmuyor!");
+            return BadRequest(new { Mesaj = "ID uyuşmazlığı!" });
         }
 
+        // Entity State'i direkt değiştirmek yerine veritabanındaki kaydı kontrol etmek daha güvenlidir
         _context.Entry(personnel).State = EntityState.Modified;
 
         try
@@ -60,26 +66,24 @@ public class PersonnelController : ControllerBase
         {
             if (!_context.Personnels.Any(e => e.Id == id))
             {
-                return NotFound("Güncellenecek personel bulunamadı.");
+                return NotFound(new { Mesaj = "Güncellenecek personel bulunamadı." });
             }
-            else
-            {
-                throw;
-            }
+            throw;
         }
 
-        return NoContent();
+        return Ok(new { Mesaj = "Personel başarıyla güncellendi." });
     }
 
-    // Frontend: api.delete(`/api/Personnel/personel-kaydi-sil/${id}`)
+    // DELETE: api/Personnel/personel-kaydi-sil/5
     [HttpDelete("personel-kaydi-sil/{id}")]
     public async Task<IActionResult> DeletePersonnel(int id)
     {
         var personnel = await _context.Personnels.FindAsync(id);
-        if (personnel == null) return NotFound("Silinecek personel bulunamadı.");
+        if (personnel == null) return NotFound(new { Mesaj = "Silinecek personel bulunamadı." });
 
         _context.Personnels.Remove(personnel);
         await _context.SaveChangesAsync();
-        return NoContent();
+        
+        return Ok(new { Mesaj = "Personel kaydı sistemden silindi." });
     }
 }
