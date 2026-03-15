@@ -87,6 +87,4 @@ public class OrderController : ControllerBase
 
         return Ok(new { Mesaj = "Sipariş silindi." });
     }
-    
-    // Diğer basit Get ve Update metodlarını modeline göre koruyabilirsin.
 }
