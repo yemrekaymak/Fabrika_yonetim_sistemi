@@ -14,7 +14,4 @@ public class User
 
     [JsonPropertyName("password")]
     public string Password { get; set; } = string.Empty; // Gerçek hayatta şifrelenir ama şimdilik düz tutalım
-
-    [JsonPropertyName("role")]
-    public string Role { get; set; } = "Personel"; // "Admin" veya "Personel" olacak
 }

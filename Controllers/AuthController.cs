@@ -9,7 +9,7 @@ using System.Text;
 
 namespace FabrikaBackend.Controllers;
 
-[Route("api/[controller]")] // Burası api/Auth rotasını oluşturur
+[Route("api/[controller]")]
 [ApiController]
 public class AuthController : ControllerBase
 {
@@ -22,7 +22,6 @@ public class AuthController : ControllerBase
         _configuration = configuration;
     }
 
-    // --- 1. KAYIT OL (REGISTER) ---
     [HttpPost("register")]
     public async Task<IActionResult> Register(UserRegisterDto request)
     {
@@ -31,11 +30,11 @@ public class AuthController : ControllerBase
             return BadRequest(new { Mesaj = "Bu email zaten kullanılıyor." });
         }
 
+        // HATA DÜZELTİLDİ: Role alanı kaldırıldı
         var newUser = new User
         {
             Email = request.Email,
-            Password = request.Password, // Gerçek hayatta şifrelenir
-            Role = "User" // Varsayılan rol
+            Password = request.Password // Gerçek hayatta şifrelenmeli!
         };
 
         _context.Users.Add(newUser);
@@ -44,11 +43,9 @@ public class AuthController : ControllerBase
         return Ok(new { Mesaj = "Kayıt başarılı!", Kullanici = newUser });
     }
 
-    // --- 2. GİRİŞ YAP (LOGIN) ---
     [HttpPost("login")]
     public IActionResult Login(UserLoginDto request)
     {
-        // Büyük/Küçük harf duyarlılığını kaldırmak için ToLower() kullanabilirsin
         var user = _context.Users.FirstOrDefault(u => u.Email == request.Email);
 
         if (user == null || user.Password != request.Password)
@@ -56,25 +53,21 @@ public class AuthController : ControllerBase
             return BadRequest(new { Mesaj = "Email veya şifre hatalı!" });
         }
 
-        // --- JWT ÜRETİMİ ---
         var tokenHandler = new JwtSecurityTokenHandler();
-        
-        // KRİTİK DÜZELTME 1: Anahtar (Key) Program.cs ile BİREBİR aynı olmalı
-        // Config'den çekmek en güvenlisidir, yoksa Program.cs'deki fallback'i kullanıyoruz.
         var keyString = _configuration["Jwt:Key"] ?? "CokGizliAnahtar123!";
-        var key = Encoding.UTF8.GetBytes("CokGizliAnahtar123!"); 
+        var key = Encoding.UTF8.GetBytes(keyString); 
         
         var tokenDescriptor = new SecurityTokenDescriptor
         {
             Subject = new ClaimsIdentity(new[]
             {
-                new Claim(ClaimTypes.Name, user.Email), // Name claim'i önemli
+                new Claim(ClaimTypes.Name, user.Email),
                 new Claim(ClaimTypes.Email, user.Email),
-                new Claim("role", user.Role ?? "User"), // Frontend'in beklediği küçük harf 'role'
-                new Claim("company_id", "1") // AccountingController'ın beklediği kritik bilgi!
+                // HATA DÜZELTİLDİ: Role veritabanında yoksa buraya sabit "User" yazıyoruz
+                new Claim("role", "User"), 
+                new Claim("company_id", "1") 
             }),
-            Expires = DateTime.UtcNow.AddHours(3), // Süreyi 3 saate çıkardım
-            // KRİTİK DÜZELTME 2: Issuer ve Audience Program.cs'dekilerle eşleşmeli
+            Expires = DateTime.UtcNow.AddHours(3),
             Issuer = _configuration["Jwt:Issuer"],
             Audience = _configuration["Jwt:Audience"],
             SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
@@ -83,12 +76,11 @@ public class AuthController : ControllerBase
         var token = tokenHandler.CreateToken(tokenDescriptor);
         var jwtString = tokenHandler.WriteToken(token);
 
-        // Frontend'in (authService.js) tam beklediği JSON formatı:
         return Ok(new { 
             mesaj = "Başarıyla giriş yaptınız!", 
             email = user.Email, 
-            rol = user.Role,
-            token = jwtString // Küçük harf 'token' frontend için daha güvenli
+            rol = "User", // Frontend patlamasın diye sabit değer döndürüyoruz
+            token = jwtString 
         });
     }
 }
