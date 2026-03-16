@@ -39,6 +39,14 @@ public class Product
     [JsonPropertyName("base_cost")]
     public double BaseCost { get; set; }
 
+    /// <summary>Birim satış fiyatı (₺). Yoksa maliyet ile aynı kabul edilir.</summary>
+    [JsonPropertyName("sale_price")]
+    public double? SalePrice { get; set; }
+
+    /// <summary>Birim başına üretim süresi (saat). Tahmini bitiş süresi = miktar * BirimUretimSuresiSaat.</summary>
+    [JsonPropertyName("birim_uretim_suresi_saat")]
+    public double? BirimUretimSuresiSaat { get; set; }
+
     [JsonPropertyName("current_stock")]
     public int CurrentStock { get; set; } = 0; 
 

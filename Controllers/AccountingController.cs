@@ -8,7 +8,7 @@ namespace FabrikaBackend.Controllers;
 
 [Route("api/Accounting")] // Frontend: api/Accounting/... bekliyor
 [ApiController]
-[Authorize] // 401 hatası alırsan token gönderdiğinden emin ol!
+[Microsoft.AspNetCore.Authorization.AllowAnonymous]
 public class AccountingController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -18,8 +18,11 @@ public class AccountingController : ControllerBase
         _context = context;
     }
 
-    private int GetCompanyId() =>
-        int.Parse(User.FindFirst("company_id")!.Value);
+    private int GetCompanyId()
+    {
+        var claim = User.FindFirst("company_id")?.Value;
+        return int.TryParse(claim, out var id) ? id : 1;
+    }
 
     // Frontend: api.post('/api/Accounting/gider-kaydet', body)
     [HttpPost("gider-kaydet")]

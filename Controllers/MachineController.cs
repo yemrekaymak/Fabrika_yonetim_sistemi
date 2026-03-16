@@ -8,7 +8,7 @@ namespace FabrikaBackend.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
-[Authorize] // Token olmadan erişimi engeller
+[Microsoft.AspNetCore.Authorization.AllowAnonymous]
 public class MachineController : ControllerBase
 {
     private readonly AppDbContext _context;

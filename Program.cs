@@ -8,9 +8,15 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Render / Heroku: PORT env ile dinle (production'da zorunlu)
+var port = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrEmpty(port))
+    builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+
 // --- 1. VERİTABANI ---
-// SQLite bağlantısını garantiye alıyoruz
-var connectionString = builder.Configuration.GetConnectionString("SqliteConnection") ?? "Data Source=fabrika.db";
+// Lokalde verilerin kalıcı olması için DB her zaman proje klasöründe (göreli yol yerine sabit yol)
+var dbPath = Path.Combine(builder.Environment.ContentRootPath, "fabrika.db");
+var connectionString = builder.Configuration.GetConnectionString("SqliteConnection") ?? $"Data Source={dbPath}";
 builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlite(connectionString));
 
 // --- 2. AUTHENTICATION (401 HATALARINA SON) ---
@@ -57,8 +63,50 @@ var app = builder.Build();
 // --- 🛠️ OTOMATİK VERİTABANI GÜNCELLEME ---
 using (var scope = app.Services.CreateScope()) {
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    // Modelden bir alan sildiysen (Department gibi), DB'nin güncellenmesini sağlar
     context.Database.EnsureCreated();
+    // Eski şemada UrunAdi kolonu yoksa ekle (500 hatasını önlemek için)
+    try {
+        var conn = context.Database.GetDbConnection();
+        conn.Open();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "PRAGMA table_info(Products)";
+        var hasUrunAdi = false;
+        using (var r = cmd.ExecuteReader()) {
+            while (r.Read()) {
+                var name = r.GetString(1);
+                if (string.Equals(name, "UrunAdi", StringComparison.OrdinalIgnoreCase)) { hasUrunAdi = true; break; }
+            }
+        }
+        if (!hasUrunAdi) {
+            cmd.CommandText = "ALTER TABLE Products ADD COLUMN UrunAdi TEXT DEFAULT ''";
+            cmd.ExecuteNonQuery();
+        }
+        var hasBirimUretimSuresiSaat = false;
+        cmd.CommandText = "PRAGMA table_info(Products)";
+        using (var r2 = cmd.ExecuteReader()) {
+            while (r2.Read()) {
+                var name = r2.GetString(1);
+                if (string.Equals(name, "BirimUretimSuresiSaat", StringComparison.OrdinalIgnoreCase)) { hasBirimUretimSuresiSaat = true; break; }
+            }
+        }
+        if (!hasBirimUretimSuresiSaat) {
+            cmd.CommandText = "ALTER TABLE Products ADD COLUMN BirimUretimSuresiSaat REAL NULL";
+            cmd.ExecuteNonQuery();
+        }
+        var hasSalePrice = false;
+        cmd.CommandText = "PRAGMA table_info(Products)";
+        using (var r3 = cmd.ExecuteReader()) {
+            while (r3.Read()) {
+                var name = r3.GetString(1);
+                if (string.Equals(name, "SalePrice", StringComparison.OrdinalIgnoreCase)) { hasSalePrice = true; break; }
+            }
+        }
+        if (!hasSalePrice) {
+            cmd.CommandText = "ALTER TABLE Products ADD COLUMN SalePrice REAL NULL";
+            cmd.ExecuteNonQuery();
+        }
+        conn.Close();
+    } catch { /* Tablo yoksa veya kolon zaten varsa yoksay */ }
 }
 
 // --- MIDDLEWARE SIRALAMASI (BU SIRA HAYATİDİR) ---

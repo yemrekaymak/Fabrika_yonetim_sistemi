@@ -13,6 +13,15 @@ public class Order
     [JsonPropertyName("product_id")]
     public int ProductId { get; set; }
 
+    [JsonPropertyName("musteri_adi")]
+    public string? MusteriAdi { get; set; }
+
+    [JsonPropertyName("urun_kodu")]
+    public string? UrunKodu { get; set; }
+
+    [JsonPropertyName("urun_adi")]
+    public string? UrunAdi { get; set; }
+
     [JsonPropertyName("quantity")]
     public int Quantity { get; set; }
 

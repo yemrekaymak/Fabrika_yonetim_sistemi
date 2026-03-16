@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using FabrikaBackend.Data;
 using FabrikaBackend.Models;
 using FabrikaBackend.DTOs;
@@ -25,16 +26,21 @@ public class AuthController : ControllerBase
     [HttpPost("register")]
     public async Task<IActionResult> Register(UserRegisterDto request)
     {
-        if (_context.Users.Any(u => u.Email == request.Email))
+        var email = (request.Email ?? "").Trim();
+        var password = request.Password ?? "";
+        if (string.IsNullOrEmpty(email))
+        {
+            return BadRequest(new { Mesaj = "E-posta giriniz." });
+        }
+        if (await _context.Users.AnyAsync(u => u.Email == email))
         {
             return BadRequest(new { Mesaj = "Bu email zaten kullanılıyor." });
         }
 
-        // HATA DÜZELTİLDİ: Role alanı kaldırıldı
         var newUser = new User
         {
-            Email = request.Email,
-            Password = request.Password // Gerçek hayatta şifrelenmeli!
+            Email = email,
+            Password = password // Gerçek hayatta şifrelenmeli!
         };
 
         _context.Users.Add(newUser);
@@ -44,11 +50,12 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
-    public IActionResult Login(UserLoginDto request)
+    public async Task<IActionResult> Login(UserLoginDto request)
     {
-        var user = _context.Users.FirstOrDefault(u => u.Email == request.Email);
+        var email = (request.Email ?? "").Trim();
+        var user = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Email == email);
 
-        if (user == null || user.Password != request.Password)
+        if (user == null || user.Password != (request.Password ?? ""))
         {
             return BadRequest(new { Mesaj = "Email veya şifre hatalı!" });
         }
