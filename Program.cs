@@ -124,6 +124,6 @@ app.UseCors("HerkesGelsin"); // 2. Sonra "kapıdan girebilir miyim?" (CORS) bak�
 app.UseAuthentication(); // 3. "Kimsin?" (Token kontrolü)
 app.UseAuthorization();  // 4. "Buraya girmeye yetkin var mı?"
 
-app.MapControllers(); // 5. Ve aksiyon!
+app.MapControllers();
 
 app.Run();
