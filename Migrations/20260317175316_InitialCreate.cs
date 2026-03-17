@@ -60,20 +60,17 @@ namespace FabrikaBackend.Migrations
                 name: "Orders",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    ProductId = table.Column<int>(type: "integer", nullable: false),
+                    Id = table.Column<string>(type: "text", nullable: false),
+                    ProductId = table.Column<string>(type: "text", nullable: false),
+                    MusteriAdi = table.Column<string>(type: "text", nullable: false),
+                    UrunKodu = table.Column<string>(type: "text", nullable: false),
+                    UrunAdi = table.Column<string>(type: "text", nullable: true),
                     Quantity = table.Column<int>(type: "integer", nullable: false),
                     EstimatedDays = table.Column<double>(type: "double precision", nullable: false),
                     TotalCost = table.Column<double>(type: "double precision", nullable: false),
                     SalePrice = table.Column<double>(type: "double precision", nullable: false),
-                    MarginPercent = table.Column<double>(type: "double precision", nullable: false),
                     Status = table.Column<string>(type: "text", nullable: false),
-                    CustomerName = table.Column<string>(type: "text", nullable: false),
-                    DeliveryDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    Notes = table.Column<string>(type: "text", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -84,11 +81,9 @@ namespace FabrikaBackend.Migrations
                 name: "Personnels",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    TcNo = table.Column<string>(type: "character varying(11)", maxLength: 11, nullable: false),
                     FirstName = table.Column<string>(type: "text", nullable: false),
                     LastName = table.Column<string>(type: "text", nullable: false),
-                    TcNo = table.Column<string>(type: "character varying(11)", maxLength: 11, nullable: false),
                     PhoneNumber = table.Column<string>(type: "character varying(11)", maxLength: 11, nullable: false),
                     Position = table.Column<string>(type: "text", nullable: false),
                     Salary = table.Column<decimal>(type: "numeric", nullable: false),
@@ -108,7 +103,7 @@ namespace FabrikaBackend.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Personnels", x => x.Id);
+                    table.PrimaryKey("PK_Personnels", x => x.TcNo);
                 });
 
             migrationBuilder.CreateTable(
@@ -116,7 +111,6 @@ namespace FabrikaBackend.Migrations
                 columns: table => new
                 {
                     UrunKodu = table.Column<string>(type: "text", nullable: false),
-                    Id = table.Column<int>(type: "integer", nullable: true),
                     UrunAdi = table.Column<string>(type: "text", nullable: false),
                     HamMadde = table.Column<string>(type: "text", nullable: false),
                     MalzemeTipi = table.Column<string>(type: "text", nullable: false),
@@ -159,8 +153,6 @@ namespace FabrikaBackend.Migrations
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    Ad = table.Column<string>(type: "text", nullable: false),
-                    Soyad = table.Column<string>(type: "text", nullable: false),
                     Email = table.Column<string>(type: "text", nullable: false),
                     Password = table.Column<string>(type: "text", nullable: false)
                 },

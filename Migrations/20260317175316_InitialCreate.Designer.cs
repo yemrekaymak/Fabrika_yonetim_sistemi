@@ -5,44 +5,49 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
 namespace FabrikaBackend.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260315144031_UpdateMachineAndPersonnelModel")]
-    partial class UpdateMachineAndPersonnelModel
+    [Migration("20260317175316_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "9.0.2");
+            modelBuilder
+                .HasAnnotation("ProductVersion", "9.0.2")
+                .HasAnnotation("Relational:MaxIdentifierLength", 63);
+
+            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("FabrikaBackend.Models.Customer", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("TEXT")
+                        .HasColumnType("text")
                         .HasAnnotation("Relational:JsonPropertyName", "id");
 
                     b.Property<string>("CompanyName")
-                        .HasColumnType("TEXT")
+                        .HasColumnType("text")
                         .HasAnnotation("Relational:JsonPropertyName", "firmaIsmi");
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasColumnType("TEXT")
+                        .HasColumnType("text")
                         .HasAnnotation("Relational:JsonPropertyName", "mail");
 
                     b.Property<string>("FullName")
                         .IsRequired()
-                        .HasColumnType("TEXT")
+                        .HasColumnType("text")
                         .HasAnnotation("Relational:JsonPropertyName", "isimSoyisim");
 
                     b.Property<string>("Phone")
                         .IsRequired()
-                        .HasColumnType("TEXT")
+                        .HasColumnType("text")
                         .HasAnnotation("Relational:JsonPropertyName", "tel");
 
                     b.HasKey("Id");
@@ -53,24 +58,24 @@ namespace FabrikaBackend.Migrations
             modelBuilder.Entity("FabrikaBackend.Models.Expense", b =>
                 {
                     b.Property<string>("GiderAdi")
-                        .HasColumnType("TEXT")
+                        .HasColumnType("text")
                         .HasAnnotation("Relational:JsonPropertyName", "gider_adi");
 
                     b.Property<int>("CompanyId")
-                        .HasColumnType("INTEGER")
+                        .HasColumnType("integer")
                         .HasAnnotation("Relational:JsonPropertyName", "companyId");
 
                     b.Property<string>("GiderTipi")
                         .IsRequired()
-                        .HasColumnType("TEXT")
+                        .HasColumnType("text")
                         .HasAnnotation("Relational:JsonPropertyName", "gider_tipi");
 
                     b.Property<DateTime>("Tarih")
-                        .HasColumnType("TEXT")
+                        .HasColumnType("timestamp with time zone")
                         .HasAnnotation("Relational:JsonPropertyName", "tarih");
 
                     b.Property<double>("Tutar")
-                        .HasColumnType("REAL")
+                        .HasColumnType("double precision")
                         .HasAnnotation("Relational:JsonPropertyName", "tutar");
 
                     b.HasKey("GiderAdi");
@@ -81,19 +86,19 @@ namespace FabrikaBackend.Migrations
             modelBuilder.Entity("FabrikaBackend.Models.Income", b =>
                 {
                     b.Property<string>("GelirAdi")
-                        .HasColumnType("TEXT")
+                        .HasColumnType("text")
                         .HasAnnotation("Relational:JsonPropertyName", "gelir_adi");
 
                     b.Property<int>("CompanyId")
-                        .HasColumnType("INTEGER")
+                        .HasColumnType("integer")
                         .HasAnnotation("Relational:JsonPropertyName", "companyId");
 
                     b.Property<DateTime>("Tarih")
-                        .HasColumnType("TEXT")
+                        .HasColumnType("timestamp with time zone")
                         .HasAnnotation("Relational:JsonPropertyName", "tarih");
 
                     b.Property<double>("Tutar")
-                        .HasColumnType("REAL")
+                        .HasColumnType("double precision")
                         .HasAnnotation("Relational:JsonPropertyName", "tutar");
 
                     b.HasKey("GelirAdi");
@@ -105,23 +110,25 @@ namespace FabrikaBackend.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Details")
-                        .HasColumnType("TEXT")
+                        .HasColumnType("text")
                         .HasAnnotation("Relational:JsonPropertyName", "details");
 
                     b.Property<string>("MachineName")
                         .IsRequired()
-                        .HasColumnType("TEXT")
+                        .HasColumnType("text")
                         .HasAnnotation("Relational:JsonPropertyName", "machine_name");
 
-                    b.Property<int?>("ProductId")
-                        .HasColumnType("INTEGER");
+                    b.Property<string>("ProductUrunKodu")
+                        .HasColumnType("text");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ProductId");
+                    b.HasIndex("ProductUrunKodu");
 
                     b.ToTable("Machines");
 
@@ -130,39 +137,53 @@ namespace FabrikaBackend.Migrations
 
             modelBuilder.Entity("FabrikaBackend.Models.Order", b =>
                 {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER")
-                        .HasAnnotation("Relational:JsonPropertyName", "id");
+                    b.Property<string>("Id")
+                        .HasColumnType("text")
+                        .HasAnnotation("Relational:JsonPropertyName", "order_id");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT")
+                        .HasColumnType("timestamp with time zone")
                         .HasAnnotation("Relational:JsonPropertyName", "created_at");
 
                     b.Property<double>("EstimatedDays")
-                        .HasColumnType("REAL")
+                        .HasColumnType("double precision")
                         .HasAnnotation("Relational:JsonPropertyName", "estimated_hour");
 
-                    b.Property<int>("ProductId")
-                        .HasColumnType("INTEGER")
+                    b.Property<string>("MusteriAdi")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("Relational:JsonPropertyName", "musteri_adi");
+
+                    b.Property<string>("ProductId")
+                        .IsRequired()
+                        .HasColumnType("text")
                         .HasAnnotation("Relational:JsonPropertyName", "product_id");
 
                     b.Property<int>("Quantity")
-                        .HasColumnType("INTEGER")
+                        .HasColumnType("integer")
                         .HasAnnotation("Relational:JsonPropertyName", "quantity");
 
                     b.Property<double>("SalePrice")
-                        .HasColumnType("REAL")
+                        .HasColumnType("double precision")
                         .HasAnnotation("Relational:JsonPropertyName", "sale_price");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("TEXT")
+                        .HasColumnType("text")
                         .HasAnnotation("Relational:JsonPropertyName", "status");
 
                     b.Property<double>("TotalCost")
-                        .HasColumnType("REAL")
+                        .HasColumnType("double precision")
                         .HasAnnotation("Relational:JsonPropertyName", "total_cost");
+
+                    b.Property<string>("UrunAdi")
+                        .HasColumnType("text")
+                        .HasAnnotation("Relational:JsonPropertyName", "urun_adi");
+
+                    b.Property<string>("UrunKodu")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("Relational:JsonPropertyName", "urun_kodu");
 
                     b.HasKey("Id");
 
@@ -171,167 +192,151 @@ namespace FabrikaBackend.Migrations
 
             modelBuilder.Entity("FabrikaBackend.Models.Personnel", b =>
                 {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER")
-                        .HasAnnotation("Relational:JsonPropertyName", "id");
+                    b.Property<string>("TcNo")
+                        .HasMaxLength(11)
+                        .HasColumnType("character varying(11)")
+                        .HasAnnotation("Relational:JsonPropertyName", "tcNo");
 
                     b.Property<int>("AbsenteeismDays")
-                        .HasColumnType("INTEGER")
+                        .HasColumnType("integer")
                         .HasAnnotation("Relational:JsonPropertyName", "devamsizlik_gun");
 
                     b.Property<double>("AverageDailyProduction")
-                        .HasColumnType("REAL")
+                        .HasColumnType("double precision")
                         .HasAnnotation("Relational:JsonPropertyName", "ortalama_gunluk_uretim");
 
                     b.Property<string>("Certifications")
                         .IsRequired()
-                        .HasColumnType("TEXT")
+                        .HasColumnType("text")
                         .HasAnnotation("Relational:JsonPropertyName", "egitim_sertifikalari");
-
-                    b.Property<int>("CompanyId")
-                        .HasColumnType("INTEGER")
-                        .HasAnnotation("Relational:JsonPropertyName", "companyId");
 
                     b.Property<string>("EmergencyContactName")
                         .IsRequired()
-                        .HasColumnType("TEXT")
+                        .HasColumnType("text")
                         .HasAnnotation("Relational:JsonPropertyName", "acil_durum_kisi");
 
                     b.Property<string>("EmergencyContactPhone")
                         .IsRequired()
-                        .HasMaxLength(11)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("text")
                         .HasAnnotation("Relational:JsonPropertyName", "acil_durum_tel");
 
                     b.Property<string>("FirstName")
                         .IsRequired()
-                        .HasColumnType("TEXT")
+                        .HasColumnType("text")
                         .HasAnnotation("Relational:JsonPropertyName", "ad");
 
                     b.Property<DateTime>("HireDate")
-                        .HasColumnType("TEXT")
+                        .HasColumnType("timestamp with time zone")
                         .HasAnnotation("Relational:JsonPropertyName", "ise_giris_tarihi");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("INTEGER")
-                        .HasAnnotation("Relational:JsonPropertyName", "aktif");
 
                     b.Property<string>("LastName")
                         .IsRequired()
-                        .HasColumnType("TEXT")
+                        .HasColumnType("text")
                         .HasAnnotation("Relational:JsonPropertyName", "soyad");
 
+                    b.Property<decimal>("MealAllowance")
+                        .HasColumnType("numeric")
+                        .HasAnnotation("Relational:JsonPropertyName", "yemek_ucreti");
+
                     b.Property<double>("OvertimeHours")
-                        .HasColumnType("REAL")
+                        .HasColumnType("double precision")
                         .HasAnnotation("Relational:JsonPropertyName", "fazla_mesai_saat");
 
                     b.Property<double>("PerformanceScore")
-                        .HasColumnType("REAL")
+                        .HasColumnType("double precision")
                         .HasAnnotation("Relational:JsonPropertyName", "performans_puani");
 
                     b.Property<string>("PhoneNumber")
                         .IsRequired()
                         .HasMaxLength(11)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("character varying(11)")
                         .HasAnnotation("Relational:JsonPropertyName", "telefon");
 
                     b.Property<string>("Position")
                         .IsRequired()
-                        .HasColumnType("TEXT")
+                        .HasColumnType("text")
                         .HasAnnotation("Relational:JsonPropertyName", "pozisyon");
 
                     b.Property<int>("RemainingLeave")
-                        .HasColumnType("INTEGER")
+                        .HasColumnType("integer")
                         .HasAnnotation("Relational:JsonPropertyName", "kalan_izin");
 
                     b.Property<decimal>("Salary")
-                        .HasColumnType("TEXT")
+                        .HasColumnType("numeric")
                         .HasAnnotation("Relational:JsonPropertyName", "maas");
 
-                    b.Property<string>("TcNo")
-                        .IsRequired()
-                        .HasMaxLength(11)
-                        .HasColumnType("TEXT")
-                        .HasAnnotation("Relational:JsonPropertyName", "tcNo");
-
                     b.Property<int>("TotalAnnualLeave")
-                        .HasColumnType("INTEGER")
+                        .HasColumnType("integer")
                         .HasAnnotation("Relational:JsonPropertyName", "yillik_izin_hakki");
 
+                    b.Property<decimal>("TransportAllowance")
+                        .HasColumnType("numeric")
+                        .HasAnnotation("Relational:JsonPropertyName", "yol_ucreti");
+
                     b.Property<int>("UsedLeave")
-                        .HasColumnType("INTEGER")
+                        .HasColumnType("integer")
                         .HasAnnotation("Relational:JsonPropertyName", "kullanilan_izin");
 
-                    b.HasKey("Id");
+                    b.HasKey("TcNo");
 
                     b.ToTable("Personnels");
                 });
 
             modelBuilder.Entity("FabrikaBackend.Models.Product", b =>
                 {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER")
-                        .HasAnnotation("Relational:JsonPropertyName", "id");
+                    b.Property<string>("UrunKodu")
+                        .HasColumnType("text")
+                        .HasAnnotation("Relational:JsonPropertyName", "urun_kodu");
 
                     b.Property<double>("BaseCost")
-                        .HasColumnType("REAL")
+                        .HasColumnType("double precision")
                         .HasAnnotation("Relational:JsonPropertyName", "base_cost");
 
+                    b.Property<double?>("BirimUretimSuresiSaat")
+                        .HasColumnType("double precision")
+                        .HasAnnotation("Relational:JsonPropertyName", "birim_uretim_suresi_saat");
+
                     b.Property<double>("BrutAgirlikKg")
-                        .HasColumnType("REAL")
+                        .HasColumnType("double precision")
                         .HasAnnotation("Relational:JsonPropertyName", "brut_agirlik_kg");
 
-                    b.Property<int>("CalisanSayisi")
-                        .HasColumnType("INTEGER")
-                        .HasAnnotation("Relational:JsonPropertyName", "calisan_sayisi");
-
                     b.Property<int>("CurrentStock")
-                        .HasColumnType("INTEGER")
+                        .HasColumnType("integer")
                         .HasAnnotation("Relational:JsonPropertyName", "current_stock");
-
-                    b.Property<int>("GunlukUretim")
-                        .HasColumnType("INTEGER")
-                        .HasAnnotation("Relational:JsonPropertyName", "gunluk_uretim");
 
                     b.Property<string>("HamMadde")
                         .IsRequired()
-                        .HasColumnType("TEXT")
+                        .HasColumnType("text")
                         .HasAnnotation("Relational:JsonPropertyName", "ham_madde");
 
-                    b.Property<bool>("HasHeatTreatment")
-                        .HasColumnType("INTEGER")
-                        .HasAnnotation("Relational:JsonPropertyName", "has_heat_treatment");
-
                     b.Property<double>("HurdaOrani")
-                        .HasColumnType("REAL")
+                        .HasColumnType("double precision")
                         .HasAnnotation("Relational:JsonPropertyName", "hurda_orani");
 
                     b.Property<string>("MalzemeTipi")
                         .IsRequired()
-                        .HasColumnType("TEXT")
+                        .HasColumnType("text")
                         .HasAnnotation("Relational:JsonPropertyName", "malzeme_tipi");
 
-                    b.Property<double>("MalzemeVerimi")
-                        .HasColumnType("REAL")
-                        .HasAnnotation("Relational:JsonPropertyName", "malzeme_verimi");
-
                     b.Property<double>("NetAgirlikKg")
-                        .HasColumnType("REAL")
+                        .HasColumnType("double precision")
                         .HasAnnotation("Relational:JsonPropertyName", "net_agirlik_kg");
 
                     b.Property<string>("PresKategorisi")
                         .IsRequired()
-                        .HasColumnType("TEXT")
+                        .HasColumnType("text")
                         .HasAnnotation("Relational:JsonPropertyName", "pres_kategorisi");
 
-                    b.Property<string>("UrunKodu")
-                        .IsRequired()
-                        .HasColumnType("TEXT")
-                        .HasAnnotation("Relational:JsonPropertyName", "urun_kodu");
+                    b.Property<double?>("SalePrice")
+                        .HasColumnType("double precision")
+                        .HasAnnotation("Relational:JsonPropertyName", "sale_price");
 
-                    b.HasKey("Id");
+                    b.Property<string>("UrunAdi")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasAnnotation("Relational:JsonPropertyName", "urun_adi");
+
+                    b.HasKey("UrunKodu");
 
                     b.ToTable("Products");
                 });
@@ -339,42 +344,42 @@ namespace FabrikaBackend.Migrations
             modelBuilder.Entity("FabrikaBackend.Models.Stock", b =>
                 {
                     b.Property<string>("Code")
-                        .HasColumnType("TEXT")
+                        .HasColumnType("text")
                         .HasAnnotation("Relational:JsonPropertyName", "kod");
 
                     b.Property<double>("Capacity")
-                        .HasColumnType("REAL")
+                        .HasColumnType("double precision")
                         .HasAnnotation("Relational:JsonPropertyName", "kapasite");
 
                     b.Property<double>("CriticalLevel")
-                        .HasColumnType("REAL")
+                        .HasColumnType("double precision")
                         .HasAnnotation("Relational:JsonPropertyName", "kritik");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("TEXT")
+                        .HasColumnType("text")
                         .HasAnnotation("Relational:JsonPropertyName", "ad");
 
                     b.Property<double>("Quantity")
-                        .HasColumnType("REAL")
+                        .HasColumnType("double precision")
                         .HasAnnotation("Relational:JsonPropertyName", "miktarSayi");
 
                     b.Property<string>("QuantityText")
                         .IsRequired()
-                        .HasColumnType("TEXT")
+                        .HasColumnType("text")
                         .HasAnnotation("Relational:JsonPropertyName", "miktar");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("TEXT")
+                        .HasColumnType("text")
                         .HasAnnotation("Relational:JsonPropertyName", "durum");
 
                     b.Property<decimal>("UnitCost")
-                        .HasColumnType("TEXT")
+                        .HasColumnType("numeric")
                         .HasAnnotation("Relational:JsonPropertyName", "birimMaliyet");
 
                     b.Property<decimal>("UnitPrice")
-                        .HasColumnType("TEXT")
+                        .HasColumnType("numeric")
                         .HasAnnotation("Relational:JsonPropertyName", "birimFiyat");
 
                     b.HasKey("Code");
@@ -386,17 +391,19 @@ namespace FabrikaBackend.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER")
+                        .HasColumnType("integer")
                         .HasAnnotation("Relational:JsonPropertyName", "id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasColumnType("TEXT")
+                        .HasColumnType("text")
                         .HasAnnotation("Relational:JsonPropertyName", "email");
 
                     b.Property<string>("Password")
                         .IsRequired()
-                        .HasColumnType("TEXT")
+                        .HasColumnType("text")
                         .HasAnnotation("Relational:JsonPropertyName", "password");
 
                     b.HasKey("Id");
@@ -408,7 +415,7 @@ namespace FabrikaBackend.Migrations
                 {
                     b.HasOne("FabrikaBackend.Models.Product", null)
                         .WithMany("Machines")
-                        .HasForeignKey("ProductId");
+                        .HasForeignKey("ProductUrunKodu");
                 });
 
             modelBuilder.Entity("FabrikaBackend.Models.Product", b =>
