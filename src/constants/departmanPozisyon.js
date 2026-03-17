@@ -16,6 +16,15 @@ export const DEPARTMAN_FILTRE_OPTIONS = [
   ...DEPARTMAN_OPTIONS,
 ];
 
+/** Personel ekleme/düzenlemede kullanılan pozisyon listesi */
+export const POZISYON_OPTIONS = [
+  { id: 'Ustabaşı', ad: 'Ustabaşı' },
+  { id: 'Pres Operatörü', ad: 'Pres Operatörü' },
+  { id: 'Yemekhane Görevlisi', ad: 'Yemekhane Görevlisi' },
+  { id: 'Satış Müdürü', ad: 'Satış Müdürü' },
+  { id: 'Üretim Müdürü', ad: 'Üretim Müdürü' },
+];
+
 export const POZISYON_BY_DEPARTMAN = {
   Üretim: [
     { id: 'Üretim Operatörü', ad: 'Üretim Operatörü' },

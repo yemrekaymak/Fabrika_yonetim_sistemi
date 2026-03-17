@@ -2,58 +2,67 @@ import React, { useState } from 'react';
 import { ArrowLeft, UserPlus, UserCircle, Trash2, Check, Square, Search } from 'lucide-react';
 import { getThemeClasses } from 'utils/theme';
 import { useToast } from 'contexts/ToastContext';
+import { createMusteri, deleteMusteri } from 'services';
 
 const inputCls = (isDark) =>
   `w-full p-3 rounded-lg border bg-transparent ${isDark ? 'border-gray-600 text-white placeholder-gray-500' : 'border-gray-300 text-gray-900 placeholder-gray-400'}`;
 
-const MusteriEkle = ({ isDark, musteriList = [], setMusteriList, onBack }) => {
+const MusteriEkle = ({ isDark, musteriList = [], onRefresh, onBack }) => {
   const { toast } = useToast();
+  const [submitting, setSubmitting] = useState(false);
   const { bgCard, textTitle, textSub, borderCol } = getThemeClasses(isDark);
   const [view, setView] = useState('menu'); // 'menu' | 'ekle' | 'cikar'
   const [ad, setAd] = useState('');
   const [soyad, setSoyad] = useState('');
-  const [idKod, setIdKod] = useState('');
   const [email, setEmail] = useState('');
   const [telefon, setTelefon] = useState('');
   const [tip, setTip] = useState('');
   const [unvan, setUnvan] = useState('');
   const [cikarArama, setCikarArama] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!ad.trim() || !soyad.trim()) return;
     if (!tip) {
       alert('Lütfen müşteri tipi seçin.');
       return;
     }
-    const nextId = musteriList.length ? Math.max(...musteriList.map((m) => m.id)) + 1 : 1;
-    const yeniIdKod = idKod.trim() || (tip === 'kurumsal' ? `M${nextId}` : `B${nextId}`);
-    const yeni = {
-      id: nextId,
-      idKod: yeniIdKod,
-      ad: ad.trim(),
-      soyad: soyad.trim(),
-      email: email.trim() || null,
-      telefon: telefon.trim() || null,
-      tip,
-      unvan: tip === 'kurumsal' ? (unvan.trim() || null) : null,
-    };
-    setMusteriList([...musteriList, yeni]);
-    setAd('');
-    setSoyad('');
-    setIdKod('');
-    setEmail('');
-    setTelefon('');
-    setTip('bireysel');
-    setUnvan('');
-    setView('menu');
-    toast('Müşteri eklendi');
+    setSubmitting(true);
+    try {
+      const yeni = {
+        ad: ad.trim(),
+        soyad: soyad.trim(),
+        email: email.trim() || null,
+        telefon: telefon.trim() || null,
+        tip,
+        unvan: tip === 'kurumsal' ? (unvan.trim() || null) : null,
+      };
+      await createMusteri(yeni);
+      setAd('');
+      setSoyad('');
+      setEmail('');
+      setTelefon('');
+      setTip('bireysel');
+      setUnvan('');
+      setView('menu');
+      toast('Müşteri eklendi');
+      onRefresh?.();
+    } catch (err) {
+      toast(err?.message || 'Müşteri eklenemedi');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleRemove = (id, adSoyad) => {
+  const handleRemove = async (id, adSoyad) => {
     if (!window.confirm(`${adSoyad || 'Bu müşteriyi'} listeden çıkarmak istiyor musunuz?`)) return;
-    setMusteriList(musteriList.filter((m) => m.id !== id));
-    toast('Müşteri listeden çıkarıldı');
+    try {
+      await deleteMusteri(id);
+      toast('Müşteri listeden çıkarıldı');
+      onRefresh?.();
+    } catch (err) {
+      toast(err?.message || 'Müşteri çıkarılamadı');
+    }
   };
 
   const linkCls = `flex items-center gap-2 text-sm font-medium ${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`;
@@ -125,17 +134,6 @@ const MusteriEkle = ({ isDark, musteriList = [], setMusteriList, onBack }) => {
               required
             />
           </div>
-        </div>
-
-        <div>
-          <label className={`block text-sm font-medium mb-2 ${textSub}`}>ID (müşteri kodu)</label>
-          <input
-            type="text"
-            value={idKod}
-            onChange={(e) => setIdKod(e.target.value)}
-            placeholder="Örn: M1, B1 (boş bırakılırsa otomatik atanır)"
-            className={inputCls(isDark)}
-          />
         </div>
 
         <div>
@@ -224,9 +222,10 @@ const MusteriEkle = ({ isDark, musteriList = [], setMusteriList, onBack }) => {
         <div className="flex gap-3 pt-2">
           <button
             type="submit"
-            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
+            disabled={submitting}
+            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50"
           >
-            <UserPlus size={18} /> Kaydet
+            <UserPlus size={18} /> {submitting ? 'Kaydediliyor...' : 'Kaydet'}
           </button>
           <button
             type="button"

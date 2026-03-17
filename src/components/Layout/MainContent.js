@@ -1,43 +1,90 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import AppHeader from './AppHeader';
-import { Dashboard, Uretim, MakineEkle, MakineBilgi, Stok, UrunEkle, Personel, PersonelBilgi, PersonelEkle, SiparisOlustur, Musteriler, MusteriEkle, MusteriBilgi, Muhasebe, GiderDüzenle, PlaceholderPage } from 'pages';
+import { Dashboard, Uretim, MakineEkle, MakineBilgi, Stok, StokDuzenle, UrunEkle, UrunSil, Personel, PersonelBilgi, PersonelDuzenle, PersonelEkle, SiparisOlustur, Musteriler, MusteriEkle, MusteriBilgi, Muhasebe, GiderDüzenle, AiTahminleri } from 'pages';
 import { getThemeClasses } from 'utils/theme';
-import { PERSONEL_LISTESI } from 'constants/personelData';
-import { MUSTERI_LISTESI } from 'constants/musteriData';
+import { getMusteriler, getMakineler, getPersonel, getUrunler, getGiderListesi, productToStokRow } from 'services';
 
 const MainContent = ({ activeTab, setActiveTab, isDark, toggleTheme, userName, onContentReady }) => {
   const { bgMain } = getThemeClasses(isDark);
-  const [personelList, setPersonelList] = useState(PERSONEL_LISTESI);
+  const [personelList, setPersonelList] = useState([]);
   const [selectedPersonId, setSelectedPersonId] = useState(null);
-  const [musteriList, setMusteriList] = useState(MUSTERI_LISTESI);
+  const [musteriList, setMusteriList] = useState([]);
   const [selectedMusteriId, setSelectedMusteriId] = useState(null);
-  const [makineList, setMakineList] = useState([
-    { id: 1, ad: 'CNC Pres - 01', idKod: 'MK-1', detay: 'Sıcaklık: 85°C' },
-    { id: 2, ad: 'Montaj Hattı - 03', idKod: 'MK-2', detay: 'Sıcaklık: 72°C' },
-    { id: 3, ad: 'Paketleme - B2', idKod: 'MK-3', detay: 'Sıcaklık: 62°C' },
-    { id: 4, ad: 'Kesim Makinesi - K1', idKod: 'MK-4', detay: 'Lazer kesim' },
-    { id: 5, ad: 'Büküm Presi - 400T', idKod: 'MK-5', detay: 'Hidrolik, 400 ton' },
-    { id: 6, ad: 'Kaynak Robotu - R02', idKod: 'MK-6', detay: '6 eksen' },
-  ]);
+  const [makineList, setMakineList] = useState([]);
   const [selectedMakineId, setSelectedMakineId] = useState(null);
-  const [giderList, setGiderList] = useState(() => {
-    const sabit = [
-      { kalem: 'Elektrik', tutar: 18500 },
-      { kalem: 'İşçilik', tutar: 125000 },
-      { kalem: 'SGK', tutar: 32000 },
-      { kalem: 'Yol', tutar: 8400 },
-      { kalem: 'Yemek', tutar: 15600 },
-      { kalem: 'Bakım', tutar: 12000 },
-      { kalem: 'Nakliye', tutar: 22000 },
-      { kalem: 'Kira', tutar: 45000 },
-    ].map((g, i) => ({ id: i + 1, ...g, tip: 'sabit' }));
-    const degisken = [
-      { kalem: 'Hammadde alımı', tutar: 285000 },
-      { kalem: 'Hurda kaybı', tutar: 14200 },
-    ].map((g, i) => ({ id: 100 + i, ...g, tip: 'degisken' }));
-    return [...sabit, ...degisken];
-  });
+  const [stokList, setStokList] = useState([]);
+  const [giderList, setGiderList] = useState([]);
+  const [apiLoading, setApiLoading] = useState(true);
+  const [apiError, setApiError] = useState(null);
   const hasReportedReady = useRef(false);
+
+  const loadApi = useCallback(async () => {
+    setApiError(null);
+    setApiLoading(true);
+    try {
+      const results = await Promise.allSettled([
+        getMusteriler(),
+        getMakineler(),
+        getPersonel(),
+        getUrunler().then((list) => (Array.isArray(list) ? list : []).map(productToStokRow)),
+        getGiderListesi(),
+      ]);
+      const [musteriler, makineler, personel, stok, giderler] = results.map((r) =>
+        r.status === 'fulfilled' ? r.value : []
+      );
+      const failed = results.filter((r) => r.status === 'rejected');
+      if (failed.length) {
+        const raw = failed.map((r) => r.reason?.message || String(r.reason)).join('; ');
+        const isNetworkError = /failed to fetch|network error|load failed/i.test(raw);
+        setApiError(
+          isNetworkError
+            ? 'Backend bağlantısı kurulamadı. Sunucunun çalıştığını ve adresi kontrol edin (.env: REACT_APP_API_BASE_URL).'
+            : raw || 'Veriler kısmen yüklenemedi'
+        );
+      }
+      setMusteriList(Array.isArray(musteriler) ? musteriler : []);
+      setMakineList(Array.isArray(makineler) ? makineler : []);
+      setPersonelList(Array.isArray(personel) ? personel : []);
+      setStokList(Array.isArray(stok) ? stok : []);
+      setGiderList(Array.isArray(giderler) ? giderler : []);
+    } catch (err) {
+      const m = err?.message || 'Veriler yüklenemedi';
+      setApiError(
+        /failed to fetch|network error|load failed/i.test(m)
+          ? 'Backend bağlantısı kurulamadı. Sunucunun çalıştığını ve adresi kontrol edin (.env: REACT_APP_API_BASE_URL).'
+          : m
+      );
+      setMusteriList([]);
+      setMakineList([]);
+      setPersonelList([]);
+      setStokList([]);
+      setGiderList([]);
+    } finally {
+      setApiLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadApi();
+  }, [loadApi]);
+
+  const refreshMusteri = useCallback(() => {
+    getMusteriler().then(setMusteriList).catch(() => {});
+  }, []);
+  const refreshMakine = useCallback(() => {
+    getMakineler().then(setMakineList).catch(() => {});
+  }, []);
+  const refreshPersonel = useCallback(() => {
+    getPersonel().then(setPersonelList).catch(() => {});
+  }, []);
+  const refreshStok = useCallback(() => {
+    getUrunler()
+      .then((list) => setStokList((Array.isArray(list) ? list : []).map(productToStokRow)))
+      .catch(() => setStokList([]));
+  }, []);
+  const refreshGider = useCallback(() => {
+    getGiderListesi().then(setGiderList).catch(() => setGiderList([]));
+  }, []);
 
   useEffect(() => {
     if (!onContentReady || hasReportedReady.current) return;
@@ -53,7 +100,7 @@ const MainContent = ({ activeTab, setActiveTab, isDark, toggleTheme, userName, o
   const renderPage = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard isDark={isDark} />;
+        return <Dashboard isDark={isDark} onNavigateToAi={() => setActiveTab('ai')} />;
       case 'uretim':
         return (
           <Uretim
@@ -80,7 +127,13 @@ const MainContent = ({ activeTab, setActiveTab, isDark, toggleTheme, userName, o
         );
       }
       case 'siparis-olustur':
-        return <SiparisOlustur isDark={isDark} />;
+        return (
+          <SiparisOlustur
+            isDark={isDark}
+            musteriList={musteriList}
+            onRefreshMusteri={refreshMusteri}
+          />
+        );
       case 'musteriler':
         return (
           <Musteriler
@@ -98,7 +151,7 @@ const MainContent = ({ activeTab, setActiveTab, isDark, toggleTheme, userName, o
           <MusteriEkle
             isDark={isDark}
             musteriList={musteriList}
-            setMusteriList={setMusteriList}
+            onRefresh={refreshMusteri}
             onBack={() => setActiveTab('musteriler')}
           />
         );
@@ -120,6 +173,7 @@ const MainContent = ({ activeTab, setActiveTab, isDark, toggleTheme, userName, o
           <Muhasebe
             isDark={isDark}
             giderList={giderList}
+            onRefresh={refreshGider}
             onMuhasebeDuzenle={() => setActiveTab('muhasebe-duzenle')}
           />
         );
@@ -128,7 +182,7 @@ const MainContent = ({ activeTab, setActiveTab, isDark, toggleTheme, userName, o
           <GiderDüzenle
             isDark={isDark}
             giderList={giderList}
-            setGiderList={setGiderList}
+            onRefresh={refreshGider}
             onBack={() => setActiveTab('muhasebe')}
           />
         );
@@ -137,14 +191,40 @@ const MainContent = ({ activeTab, setActiveTab, isDark, toggleTheme, userName, o
           <MakineEkle
             isDark={isDark}
             makineList={makineList}
-            setMakineList={setMakineList}
+            onRefresh={refreshMakine}
             onBack={() => setActiveTab('uretim')}
           />
         );
       case 'stok':
-        return <Stok isDark={isDark} onUrunEkle={() => setActiveTab('urun-ekle')} />;
+        return (
+          <Stok
+            isDark={isDark}
+            stokList={stokList}
+            stokLoading={apiLoading}
+            onRefresh={refreshStok}
+            onDuzenle={() => setActiveTab('stok-duzenle')}
+          />
+        );
+      case 'stok-duzenle':
+        return (
+          <StokDuzenle
+            isDark={isDark}
+            onBack={() => setActiveTab('stok')}
+            onUrunEkle={() => setActiveTab('urun-ekle')}
+            onUrunSil={() => setActiveTab('urun-sil')}
+          />
+        );
       case 'urun-ekle':
-        return <UrunEkle isDark={isDark} onBack={() => setActiveTab('stok')} />;
+        return <UrunEkle isDark={isDark} makineList={makineList} onBack={() => setActiveTab('stok-duzenle')} onRefresh={refreshStok} />;
+      case 'urun-sil':
+        return (
+          <UrunSil
+            isDark={isDark}
+            stokList={stokList}
+            onBack={() => setActiveTab('stok-duzenle')}
+            onRefresh={refreshStok}
+          />
+        );
       case 'personel':
         return (
           <Personel
@@ -167,15 +247,36 @@ const MainContent = ({ activeTab, setActiveTab, isDark, toggleTheme, userName, o
               setActiveTab('personel');
               setSelectedPersonId(null);
             }}
+            onEdit={() => setActiveTab('personel-duzenle')}
+          />
+        );
+      }
+      case 'personel-duzenle': {
+        const person = personelList.find((p) => p.id === selectedPersonId);
+        return (
+          <PersonelDuzenle
+            isDark={isDark}
+            person={person}
+            onSave={() => {
+              refreshPersonel().then(() => setActiveTab('personel-bilgi'));
+            }}
+            onBack={() => setActiveTab('personel-bilgi')}
           />
         );
       }
       case 'personel-ekle':
-        return <PersonelEkle isDark={isDark} personelList={personelList} setPersonelList={setPersonelList} onBack={() => setActiveTab('personel')} />;
+        return (
+          <PersonelEkle
+            isDark={isDark}
+            personelList={personelList}
+            onRefresh={refreshPersonel}
+            onBack={() => setActiveTab('personel')}
+          />
+        );
       case 'ai':
-        return <PlaceholderPage activeTab={activeTab} isDark={isDark} />;
+        return <AiTahminleri isDark={isDark} />;
       default:
-        return <Dashboard isDark={isDark} />;
+        return <Dashboard isDark={isDark} onNavigateToAi={() => setActiveTab('ai')} />;
     }
   };
 
@@ -189,6 +290,21 @@ const MainContent = ({ activeTab, setActiveTab, isDark, toggleTheme, userName, o
           toggleTheme={toggleTheme}
           userName={userName}
         />
+        {apiError && (
+          <div className="mb-4 px-4 py-3 rounded-lg bg-amber-900/30 border border-amber-700 text-amber-200 text-sm flex flex-wrap items-center gap-3">
+            <span className="flex-1 min-w-0">{apiError}</span>
+            <button
+              type="button"
+              onClick={() => {
+                setApiError(null);
+                loadApi();
+              }}
+              className="flex-shrink-0 px-3 py-1.5 rounded-md bg-amber-700 hover:bg-amber-600 text-amber-100 text-sm font-medium"
+            >
+              Yenile
+            </button>
+          </div>
+        )}
         <div key={activeTab} className="page-transition-enter">
           {renderPage()}
         </div>

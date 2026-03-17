@@ -1,20 +1,40 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { register as apiRegister } from 'services/authService';
 
 const RegisterScreen = ({ onSuccess, onBack }) => {
   const [mail, setMail] = useState('');
   const [isim, setIsim] = useState('');
   const [soyisim, setSoyisim] = useState('');
-  const [kullaniciAdi, setKullaniciAdi] = useState('');
   const [sifre, setSifre] = useState('');
   const [sifreTekrar, setSifreTekrar] = useState('');
   const [showSifre, setShowSifre] = useState(false);
   const [showSifreTekrar, setShowSifreTekrar] = useState(false);
   const [hata, setHata] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setHata('');
+    const emailTrim = (mail || '').trim();
+    const adTrim = (isim || '').trim();
+    const soyadTrim = (soyisim || '').trim();
+    if (!emailTrim) {
+      setHata('E-posta alanı zorunludur.');
+      return;
+    }
+    if (!adTrim) {
+      setHata('Ad alanı zorunludur.');
+      return;
+    }
+    if (!soyadTrim) {
+      setHata('Soyad alanı zorunludur.');
+      return;
+    }
+    if (!sifre) {
+      setHata('Şifre alanı zorunludur.');
+      return;
+    }
     if (sifre !== sifreTekrar) {
       setHata('Şifreler eşleşmiyor.');
       return;
@@ -23,7 +43,15 @@ const RegisterScreen = ({ onSuccess, onBack }) => {
       setHata('Şifre en az 4 karakter olmalı.');
       return;
     }
-    onSuccess();
+    setLoading(true);
+    try {
+      await apiRegister(adTrim, soyadTrim, emailTrim, sifre);
+      onSuccess();
+    } catch (err) {
+      setHata(err?.message || 'Hesap oluşturulamadı.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -69,17 +97,6 @@ const RegisterScreen = ({ onSuccess, onBack }) => {
               onChange={(e) => setSoyisim(e.target.value)}
               className="w-full p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:border-blue-500"
               placeholder="Soyadınız"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-gray-400 text-sm mb-1">Kullanıcı adı</label>
-            <input
-              type="text"
-              value={kullaniciAdi}
-              onChange={(e) => setKullaniciAdi(e.target.value)}
-              className="w-full p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:border-blue-500"
-              placeholder="Kullanıcı adı"
               required
             />
           </div>
@@ -130,9 +147,10 @@ const RegisterScreen = ({ onSuccess, onBack }) => {
           )}
           <button
             type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-200"
+            disabled={loading}
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-900 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded transition duration-200"
           >
-            Hesap oluştur
+            {loading ? 'Oluşturuluyor...' : 'Hesap oluştur'}
           </button>
         </form>
       </div>

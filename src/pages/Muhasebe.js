@@ -1,7 +1,7 @@
-import React, { useState, useMemo } from 'react';
-import { Sparkles, TrendingDown, TrendingUp, Pencil } from 'lucide-react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { TrendingDown, TrendingUp, Pencil, RefreshCw } from 'lucide-react';
 import { getThemeClasses } from 'utils/theme';
-import { MOCK_SIPARISLER, MOCK_MUSTERILER } from 'constants/siparisData';
+import { getSiparisler } from 'services';
 
 const AY_ADLARI = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
 
@@ -9,47 +9,51 @@ const AY_ADLARI = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temm
 const toTitleCase = (str) =>
   (str || '').split(/\s+/).filter(Boolean).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') || str || '';
 
-/** Sipariş listesinden aylık satış toplamları ve aydaki müşteri bazlı tutarları hesaplar (tarih: DD.MM.YYYY) */
-const aylikSatislarFromSiparisler = (siparisler, musteriler) => {
+/** Sevk Edildi siparişlerinden aylık satış toplamları (tarih: YYYY-MM-DD veya DD.MM.YYYY) */
+const aylikSatislarFromSiparisler = (siparisler) => {
   const byMonth = {};
   siparisler.forEach((s) => {
     const tutar = s.miktar * (s.birimFiyat ?? 0);
-    const [gun, ay, yil] = (s.tarih || '').split('.');
-    if (!ay || !yil) return;
-    const key = `${ay}.${yil}`;
-    if (!byMonth[key]) byMonth[key] = { ay: parseInt(ay, 10) - 1, yil, toplam: 0, byMusteri: {} };
+    const tarih = (s.tarih || '').split('T')[0].trim();
+    let ay, yil;
+    if (tarih.includes('-')) {
+      const [y, m] = tarih.split('-');
+      yil = y;
+      ay = parseInt(m, 10) - 1;
+    } else {
+      const parts = tarih.split('.');
+      if (parts.length < 3) return;
+      ay = parseInt(parts[1], 10) - 1;
+      yil = parts[2];
+    }
+    if (!yil || Number.isNaN(ay) || ay < 0 || ay > 11) return;
+    const key = `${ay + 1}.${yil}`;
+    if (!byMonth[key]) byMonth[key] = { ay, yil, toplam: 0, byMusteri: {} };
     byMonth[key].toplam += tutar;
-    byMonth[key].byMusteri[s.musteriId] = (byMonth[key].byMusteri[s.musteriId] || 0) + tutar;
+    const mKey = s.musteriAdi || 'Belirsiz';
+    byMonth[key].byMusteri[mKey] = (byMonth[key].byMusteri[mKey] || 0) + tutar;
   });
-  const musteriMap = (musteriler || []).reduce((acc, m) => ({ ...acc, [m.id]: m.unvan }), {});
   return Object.entries(byMonth)
     .map(([key, v]) => ({
       aciklama: `${AY_ADLARI[v.ay]} ${v.yil} satışları`,
       tutar: v.toplam,
       yil: parseInt(v.yil, 10),
       ay: v.ay,
-      musteriDetay: Object.entries(v.byMusteri).map(([id, t]) => ({ unvan: musteriMap[id] || id, tutar: t })),
+      musteriDetay: Object.entries(v.byMusteri).map(([unvan, t]) => ({ unvan, tutar: t })),
     }))
     .sort((a, b) => (a.yil !== b.yil ? a.yil - b.yil : a.ay - b.ay));
 };
 
-const MOCK_TAHMINI_AYLIK = {
-  beklenenUretim: '28.500 birim',
-  tahminiGelir: 445000,
-  aciklama: 'Beklenen aylık üretime göre tahmini satış geliri',
-};
+const DURUM_SEVK_EDILDI = 'Sevk Edildi';
+const DURUMLAR_TAHMINI = ['Beklemede', 'Onaylandı', 'Üretimde'];
 
-// AI analiz mock (entegre edilince doldurulacak)
-const MOCK_AI_ANALIZ = [
-  'Sabit giderler toplamı aylık bütçenin %42\'si; kira ve işçilik en yüksek kalemler.',
-  'Değişken giderlerde hammadde maliyeti öne çıkıyor; tedarikçi görüşmeleri önerilir.',
-  'Gelir–gider farkı pozitif; mart tahmini ile nakit akışı rahat görünüyor.',
-  'Hurda kaybı oranı hedef aralıkta; iyileştirme için süreç gözden geçirilebilir.',
-];
-
-const Muhasebe = ({ isDark, giderList = [], onMuhasebeDuzenle }) => {
+const Muhasebe = ({ isDark, giderList = [], onRefresh, onMuhasebeDuzenle }) => {
   const { bgCard, textTitle, textSub, borderCol } = getThemeClasses(isDark);
-  const [showAiPanel, setShowAiPanel] = useState(false);
+  const [siparisler, setSiparisler] = useState([]);
+
+  useEffect(() => {
+    getSiparisler().then(setSiparisler).catch(() => setSiparisler([]));
+  }, []);
 
   const sabitGiderler = useMemo(() => giderList.filter((g) => g.tip === 'sabit'), [giderList]);
   const degiskenGiderler = useMemo(() => giderList.filter((g) => g.tip === 'degisken'), [giderList]);
@@ -58,17 +62,45 @@ const Muhasebe = ({ isDark, giderList = [], onMuhasebeDuzenle }) => {
   const toplamDegisken = degiskenGiderler.reduce((s, g) => s + g.tutar, 0);
   const toplamGider = toplamSabit + toplamDegisken;
 
-  const satislar = useMemo(() => aylikSatislarFromSiparisler(MOCK_SIPARISLER, MOCK_MUSTERILER), []);
-  const ortalamaGelir = satislar.length
-    ? Math.round(satislar.reduce((s, x) => s + x.tutar, 0) / satislar.length)
-    : 0;
+  const sevkEdilenSiparisler = useMemo(
+    () => siparisler.filter((s) => s.durum === DURUM_SEVK_EDILDI),
+    [siparisler]
+  );
+  const satislar = useMemo(() => aylikSatislarFromSiparisler(sevkEdilenSiparisler), [sevkEdilenSiparisler]);
+  const ortalamaGelir = useMemo(
+    () => (satislar.length ? Math.round(satislar.reduce((s, x) => s + x.tutar, 0) / satislar.length) : 0),
+    [satislar]
+  );
+
+  const tahminiSiparisler = useMemo(
+    () => siparisler.filter((s) => DURUMLAR_TAHMINI.includes(s.durum)),
+    [siparisler]
+  );
+  const tahminiGelir = useMemo(
+    () => tahminiSiparisler.reduce((acc, s) => acc + s.miktar * (s.birimFiyat ?? 0), 0),
+    [tahminiSiparisler]
+  );
+
   const netKar = ortalamaGelir - toplamGider;
+
+  const handleRefresh = useCallback(() => {
+    onRefresh?.();
+    getSiparisler().then(setSiparisler).catch(() => setSiparisler([]));
+  }, [onRefresh]);
 
   const formatTL = (n) => (n != null ? n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—');
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap justify-end items-center gap-2">
+        <button
+          type="button"
+          onClick={handleRefresh}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border transition-colors ${isDark ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-300 text-gray-700 hover:bg-gray-100'}`}
+            title="Gider ve sipariş listesini yenile"
+          >
+            <RefreshCw size={18} /> Yenile
+        </button>
         {onMuhasebeDuzenle && (
           <button
             type="button"
@@ -78,22 +110,6 @@ const Muhasebe = ({ isDark, giderList = [], onMuhasebeDuzenle }) => {
             <Pencil size={18} /> Düzenle
           </button>
         )}
-        <button
-          type="button"
-          onClick={() => setShowAiPanel((v) => !v)}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border transition-colors ${
-            showAiPanel
-              ? isDark
-                ? 'bg-purple-500/30 border-purple-500/60 text-purple-300'
-                : 'bg-purple-100 border-purple-400 text-purple-800'
-              : isDark
-                ? 'border-purple-500/60 text-purple-400 hover:bg-purple-500/20'
-                : 'border-purple-400 text-purple-700 hover:bg-purple-50'
-          }`}
-          title="Muhasebe için AI analizi"
-        >
-          <Sparkles size={18} /> AI Analiz
-        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -152,11 +168,12 @@ const Muhasebe = ({ isDark, giderList = [], onMuhasebeDuzenle }) => {
           </h2>
 
           <div className="space-y-4">
-            <h3 className={`text-sm font-semibold uppercase tracking-wider ${textSub}`}>{toTitleCase('Müşterilere yapılan satışlar')}</h3>
+            <h3 className={`text-sm font-semibold uppercase tracking-wider ${textSub}`}>{toTitleCase('Müşterilere yapılan satışlar (Sevk Edildi)')}</h3>
+            <p className={`text-xs ${textSub} -mt-1`}>{toTitleCase('Ortalama aylık gelir, sevk edilen siparişlere göre hesaplanır.')}</p>
             <div className="space-y-2">
               {satislar.length === 0 ? (
                 <div className={`px-4 py-3 rounded-lg border ${isDark ? 'bg-gray-700/40 border-gray-600' : 'bg-gray-50 border-gray-200'} ${textSub}`}>
-                  {toTitleCase('Henüz sipariş yok')}
+                  {toTitleCase('Sevk edilmiş sipariş yok')}
                 </div>
               ) : (
                 satislar.map((s) => (
@@ -189,16 +206,18 @@ const Muhasebe = ({ isDark, giderList = [], onMuhasebeDuzenle }) => {
               </div>
             </div>
 
-            <h3 className={`text-sm font-semibold uppercase tracking-wider mt-4 ${textSub}`}>{toTitleCase('Tahmini (beklenen üretim)')}</h3>
+            <h3 className={`text-sm font-semibold uppercase tracking-wider mt-4 ${textSub}`}>{toTitleCase('Tahmini (bekleyen siparişler)')}</h3>
             <div className={`flex flex-col gap-2 w-full px-4 py-4 rounded-lg border ${isDark ? 'bg-gray-700/40 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
-              <p className={`text-sm ${textSub}`}>{toTitleCase(MOCK_TAHMINI_AYLIK.aciklama)}</p>
+              <p className={`text-sm ${textSub}`}>
+                {toTitleCase('Beklemede, Onaylandı ve Üretimde durumundaki siparişlerin toplam tahmini geliri.')}
+              </p>
               <div className="flex justify-between items-center">
-                <span className={`text-sm ${textSub}`}>{toTitleCase('Beklenen üretim')}</span>
-                <span className={`font-semibold ${textTitle}`}>{MOCK_TAHMINI_AYLIK.beklenenUretim}</span>
+                <span className={`text-sm ${textSub}`}>{toTitleCase('Sipariş adedi')}</span>
+                <span className={`font-semibold ${textTitle}`}>{tahminiSiparisler.length} sipariş</span>
               </div>
               <div className="flex justify-between items-center pt-1 border-t border-gray-600/50">
                 <span className={`font-semibold ${textTitle}`}>{toTitleCase('Tahmini gelir')}</span>
-                <span className="font-bold text-green-600 dark:text-green-400 tabular-nums">{formatTL(MOCK_TAHMINI_AYLIK.tahminiGelir)} ₺</span>
+                <span className="font-bold text-green-600 dark:text-green-400 tabular-nums">{formatTL(tahminiGelir)} ₺</span>
               </div>
             </div>
 
@@ -217,25 +236,6 @@ const Muhasebe = ({ isDark, giderList = [], onMuhasebeDuzenle }) => {
         </div>
 
       </div>
-
-      {showAiPanel && (
-        <div className={`p-6 rounded-xl shadow-sm border transition-colors duration-300 ${bgCard}`}>
-          <h2 className={`text-lg font-bold mb-4 flex items-center gap-2 ${textTitle}`}>
-            <Sparkles className="text-purple-500" size={22} /> AI Analiz
-          </h2>
-          <p className={`text-xs ${textSub} mb-4`}>{toTitleCase('Muhasebe modülü bağlandığında burada analiz sonuçları gösterilecek.')}</p>
-          <ul className="space-y-3">
-            {MOCK_AI_ANALIZ.map((m, i) => (
-              <li key={i} className={`flex gap-2 text-sm ${textSub}`}>
-                <span className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${isDark ? 'bg-purple-900/50 text-purple-300' : 'bg-purple-100 text-purple-700'}`}>
-                  {i + 1}
-                </span>
-                {m}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
     </div>
   );
 };

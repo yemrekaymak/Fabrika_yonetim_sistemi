@@ -33,6 +33,7 @@ export const PAGE_TITLES = {
   personel: 'Personel',
   'personel-bilgi': 'Personel Bilgisi',
   'personel-ekle': 'Personel Düzenle',
+  'personel-duzenle': 'Bilgi Düzenle',
 };
 
 /** Breadcrumb: her tab için yol (üst sayfaya tek tıkla dönüş) */
@@ -53,4 +54,5 @@ export const BREADCRUMB_PATH = {
   personel: [{ tabId: 'personel', label: 'Personel' }],
   'personel-bilgi': [{ tabId: 'personel', label: 'Personel' }, { tabId: 'personel-bilgi', label: 'Personel Bilgisi' }],
   'personel-ekle': [{ tabId: 'personel', label: 'Personel' }, { tabId: 'personel-ekle', label: 'Personel Düzenle' }],
+  'personel-duzenle': [{ tabId: 'personel', label: 'Personel' }, { tabId: 'personel-bilgi', label: 'Personel Bilgisi' }, { tabId: 'personel-duzenle', label: 'Bilgi Düzenle' }],
 };

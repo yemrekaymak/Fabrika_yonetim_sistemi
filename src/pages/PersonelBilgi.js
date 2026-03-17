@@ -1,8 +1,8 @@
 import React from 'react';
-import { ArrowLeft, Users } from 'lucide-react';
+import { ArrowLeft, Users, Pencil } from 'lucide-react';
 import { getThemeClasses } from 'utils/theme';
 
-const PersonelBilgi = ({ isDark, person, onBack }) => {
+const PersonelBilgi = ({ isDark, person, onBack, onEdit }) => {
   const { bgCard, textTitle, textSub, borderCol } = getThemeClasses(isDark);
 
   if (!person) {
@@ -21,6 +21,19 @@ const PersonelBilgi = ({ isDark, person, onBack }) => {
   }
 
   const kalanIzin = (person.yillikIzinHakki ?? 0) - (person.kullanilanIzin ?? 0);
+  const kidemYil = person.iseGirisTarihi
+    ? (() => {
+        try {
+          const [d, m, y] = String(person.iseGirisTarihi).split(/[.\-/]/);
+          const giris = new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
+          if (Number.isNaN(giris.getTime())) return null;
+          const yil = (Date.now() - giris.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+          return yil >= 0 ? yil : null;
+        } catch {
+          return null;
+        }
+      })()
+    : null;
 
   const linkCls = `flex items-center gap-2 text-sm font-medium ${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`;
 
@@ -30,6 +43,15 @@ const PersonelBilgi = ({ isDark, person, onBack }) => {
         <button type="button" onClick={onBack} className={linkCls}>
           <ArrowLeft size={18} /> Listeye dön
         </button>
+        {onEdit && (
+          <button
+            type="button"
+            onClick={onEdit}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors`}
+          >
+            <Pencil size={18} /> Düzenle
+          </button>
+        )}
       </div>
 
       <div className={`mb-6 pb-4 border-b ${borderCol}`}>
@@ -39,7 +61,7 @@ const PersonelBilgi = ({ isDark, person, onBack }) => {
           </div>
           <div>
             <h2 className={`text-2xl font-bold ${textTitle}`}>{person.firstName} {person.lastName}</h2>
-            <div className={`text-sm ${textSub}`}>{person.department || '—'} · {person.pozisyon || '—'}</div>
+            <div className={`text-sm ${textSub}`}>{person.pozisyon || '—'}</div>
           </div>
         </div>
       </div>
@@ -47,9 +69,15 @@ const PersonelBilgi = ({ isDark, person, onBack }) => {
       <div className="space-y-6 max-w-2xl">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
+            <div className={`text-xs font-medium uppercase tracking-wider ${textSub}`}>Personel ID</div>
+            <div className={`font-medium ${textTitle}`}>{person.id != null ? person.id : '—'}</div>
+          </div>
+          <div>
             <div className={`text-xs font-medium uppercase tracking-wider ${textSub}`}>TC Kimlik No</div>
             <div className={`font-medium ${textTitle}`}>{person.tcKimlikNo ?? '—'}</div>
           </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <div className={`text-xs font-medium uppercase tracking-wider ${textSub}`}>Telefon</div>
             <div className={`font-medium ${textTitle}`}>{person.telefon ?? '—'}</div>
@@ -57,8 +85,8 @@ const PersonelBilgi = ({ isDark, person, onBack }) => {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <div className={`text-xs font-medium uppercase tracking-wider ${textSub}`}>Departman</div>
-            <div className={`font-medium ${textTitle}`}>{person.department ?? '—'}</div>
+            <div className={`text-xs font-medium uppercase tracking-wider ${textSub}`}>Brüt maaş (₺/ay)</div>
+            <div className={`font-medium ${textTitle}`}>{person.maas != null ? person.maas.toLocaleString('tr-TR') : '—'}</div>
           </div>
           <div>
             <div className={`text-xs font-medium uppercase tracking-wider ${textSub}`}>Pozisyon</div>
@@ -72,23 +100,19 @@ const PersonelBilgi = ({ isDark, person, onBack }) => {
           </div>
           <div>
             <div className={`text-xs font-medium uppercase tracking-wider ${textSub}`}>Kıdem (yıl)</div>
-            <div className={`font-medium ${textTitle}`}>{person.kidem != null ? Number(person.kidem).toLocaleString('tr-TR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '—'}</div>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <div className={`text-xs font-medium uppercase tracking-wider ${textSub}`}>Brüt maaş (₺/ay)</div>
-            <div className={`font-medium ${textTitle}`}>{person.maas != null ? person.maas.toLocaleString('tr-TR') : '—'}</div>
-          </div>
-          <div>
-            <div className={`text-xs font-medium uppercase tracking-wider ${textSub}`}>Yol ücreti (₺/ay)</div>
-            <div className={`font-medium ${textTitle}`}>{person.yol != null ? person.yol.toLocaleString('tr-TR') : '—'}</div>
+            <div className={`font-medium ${textTitle}`}>
+              {kidemYil != null ? kidemYil.toLocaleString('tr-TR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : (person.kidem != null ? Number(person.kidem).toLocaleString('tr-TR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '—')}
+            </div>
           </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <div className={`text-xs font-medium uppercase tracking-wider ${textSub}`}>Yemek (₺/ay)</div>
             <div className={`font-medium ${textTitle}`}>{person.yemek != null ? person.yemek.toLocaleString('tr-TR') : '—'}</div>
+          </div>
+          <div>
+            <div className={`text-xs font-medium uppercase tracking-wider ${textSub}`}>Yol ücreti (₺/ay)</div>
+            <div className={`font-medium ${textTitle}`}>{person.yol != null ? person.yol.toLocaleString('tr-TR') : '—'}</div>
           </div>
         </div>
         <div>
@@ -110,9 +134,35 @@ const PersonelBilgi = ({ isDark, person, onBack }) => {
             </div>
           </div>
         </div>
-        <div>
-          <div className={`text-xs font-medium uppercase tracking-wider ${textSub}`}>Fazla mesai süresi</div>
-          <div className={`font-medium ${textTitle}`}>{person.fazlaMesaiSaat != null ? `${person.fazlaMesaiSaat} saat` : '—'}</div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <div className={`text-xs font-medium uppercase tracking-wider ${textSub}`}>Fazla mesai (saat)</div>
+            <div className={`font-medium ${textTitle}`}>{person.fazlaMesaiSaat != null ? `${person.fazlaMesaiSaat} saat` : '—'}</div>
+          </div>
+          <div>
+            <div className={`text-xs font-medium uppercase tracking-wider ${textSub}`}>Performans puanı</div>
+            <div className={`font-medium ${textTitle}`}>{person.performansPuani != null ? person.performansPuani.toLocaleString('tr-TR') : '—'}</div>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <div className={`text-xs font-medium uppercase tracking-wider ${textSub}`}>Ortalama günlük üretim</div>
+            <div className={`font-medium ${textTitle}`}>{person.ortalamaGunlukUretim != null ? person.ortalamaGunlukUretim.toLocaleString('tr-TR') : '—'}</div>
+          </div>
+          <div>
+            <div className={`text-xs font-medium uppercase tracking-wider ${textSub}`}>Devamsızlık (gün)</div>
+            <div className={`font-medium ${textTitle}`}>{person.devamsizlikGun != null ? person.devamsizlikGun : '—'}</div>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <div className={`text-xs font-medium uppercase tracking-wider ${textSub}`}>Acil durum kişisi</div>
+            <div className={`font-medium ${textTitle}`}>{person.acilDurumKisi ?? '—'}</div>
+          </div>
+          <div>
+            <div className={`text-xs font-medium uppercase tracking-wider ${textSub}`}>Acil durum telefonu</div>
+            <div className={`font-medium ${textTitle}`}>{person.acilDurumTel ?? '—'}</div>
+          </div>
         </div>
         <div>
           <div className={`text-xs font-medium uppercase tracking-wider mb-2 ${textSub}`}>Eğitim / Sertifikalar</div>

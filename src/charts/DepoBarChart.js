@@ -9,7 +9,6 @@ import {
   ResponsiveContainer,
   Cell,
 } from 'recharts';
-import { DEPO_DOLULUK_VERISI } from 'constants/chartData';
 
 const RENK_PALETI = ['#3b82f6', '#a855f7', '#22c55e', '#f59e0b', '#ef4444'];
 
@@ -29,13 +28,13 @@ const CustomTooltipContent = ({ active, payload, label, isDark }) => {
 };
 
 const DepoBarChart = ({ isDark, data }) => {
-  const chartData = data && data.length > 0
+  const chartData = Array.isArray(data) && data.length > 0
     ? data.map((d, i) => ({
-        malzeme: d.malzeme || d.name,
-        miktar: Number(d.miktar ?? d.stockQuantity ?? 0),
+        malzeme: d.malzeme || d.name || d.ad || d.label || '—',
+        miktar: Number(d.miktar ?? d.stockQuantity ?? d.miktarSayi ?? 0),
         renk: d.renk || RENK_PALETI[i % RENK_PALETI.length],
       }))
-    : DEPO_DOLULUK_VERISI;
+    : [];
 
   const gridStroke = isDark ? '#374151' : '#e5e7eb';
   const axisStroke = isDark ? '#9ca3af' : '#6b7280';
@@ -45,6 +44,15 @@ const DepoBarChart = ({ isDark, data }) => {
 
   return (
     <div className="w-full h-64 mt-4">
+      {chartData.length === 0 ? (
+        <div
+          className={`w-full h-full rounded-lg border flex items-center justify-center text-sm ${
+            isDark ? 'border-gray-700 bg-gray-800/40 text-gray-400' : 'border-gray-200 bg-gray-50 text-gray-500'
+          }`}
+        >
+          Depo grafiği için veri yok.
+        </div>
+      ) : (
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={chartData} margin={{ top: 16, right: 16, left: 0, bottom: 8 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
@@ -73,6 +81,7 @@ const DepoBarChart = ({ isDark, data }) => {
           </Bar>
         </BarChart>
       </ResponsiveContainer>
+      )}
     </div>
   );
 };

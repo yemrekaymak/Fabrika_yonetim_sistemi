@@ -4,54 +4,77 @@ import { getThemeClasses } from 'utils/theme';
 import NumberStepperInput from 'components/NumberStepperInput';
 import { useToast } from 'contexts/ToastContext';
 import ThemeDropdown from 'components/ThemeDropdown';
+import { createUrun } from 'services';
 
 const BIRIM_OPTIONS = [
   { id: 'saat', ad: 'Saat' },
   { id: 'dakika', ad: 'Dakika' },
 ];
 
-// CSV kolonları: urun_kodu + pres/makine (0/1). Etiketler Türkçe gösterim için.
-const MAKINE_KOLONLARI = [
-  { key: '1000_ton', label: '1000 ton' },
-  { key: '800_ton', label: '800 ton' },
-  { key: '400_ton', label: '400 ton' },
-  { key: '250_ton', label: '250 ton' },
-  { key: 'eksantrik_125', label: 'Eksantrik 125' },
-  { key: 'eksantrik_80', label: 'Eksantrik 80' },
-  { key: 'induksiyon', label: 'İndüksiyon' },
-  { key: 'hidrolik_kivirma', label: 'Hidrolik kıvırma' },
-];
-
-const initialMakineFlags = () =>
-  MAKINE_KOLONLARI.reduce((acc, { key }) => ({ ...acc, [key]: false }), {});
-
-const UrunEkle = ({ isDark, onBack }) => {
+const UrunEkle = ({ isDark, makineList = [], onBack, onRefresh }) => {
   const { toast } = useToast();
   const { textTitle, textSub, borderCol } = getThemeClasses(isDark);
+  const [submitting, setSubmitting] = useState(false);
   const [urunKodu, setUrunKodu] = useState('');
   const [urunAdi, setUrunAdi] = useState('');
   const [hammaddeTuru, setHammaddeTuru] = useState('');
   const [birimUretimSuresi, setBirimUretimSuresi] = useState('');
   const [birimSureBirim, setBirimSureBirim] = useState('');
-  const [beklenenHurdaMiktar, setBeklenenHurdaMiktar] = useState('');
   const [brutAgirlik, setBrutAgirlik] = useState('');
   const [netAgirlik, setNetAgirlik] = useState('');
   const [hurdaOrani, setHurdaOrani] = useState('');
   const [gunlukUretim, setGunlukUretim] = useState('');
-  const [makineFlags, setMakineFlags] = useState(initialMakineFlags);
+  const [birimMaliyet, setBirimMaliyet] = useState('');
+  const [birimFiyat, setBirimFiyat] = useState('');
+  const [guncelStok, setGuncelStok] = useState('');
+  const [makineFlags, setMakineFlags] = useState({});
 
-  const toggleMakine = (key) => {
-    setMakineFlags((prev) => ({ ...prev, [key]: !prev[key] }));
+  const toggleMakine = (id) => {
+    setMakineFlags((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!birimSureBirim) {
-      alert('Lütfen birim seçiniz.');
+    if (!urunKodu.trim()) {
+      toast('Ürün kodu zorunludur.');
       return;
     }
-    toast('Ürün kaydedildi');
-    onBack();
+    setSubmitting(true);
+    try {
+      const birimSureSayi = parseFloat(String(birimUretimSuresi).replace(',', '.')) || 0;
+      const birimSureSaat =
+        birimSureSayi > 0 && birimSureBirim === 'dakika'
+          ? birimSureSayi / 60
+          : birimSureSayi > 0
+            ? birimSureSayi
+            : null;
+      const productData = {
+        urun_kodu: urunKodu.trim(),
+        ad: (urunAdi.trim() || urunKodu.trim()) || '',
+        urun_adi: (urunAdi.trim() || urunKodu.trim()) || '',
+        ham_madde: hammaddeTuru.trim() || '',
+        malzeme_tipi: hammaddeTuru.trim() || '-',
+        pres_kategorisi: '-',
+        base_cost: Number(birimMaliyet) || 0,
+        birimMaliyet: Number(birimMaliyet) || 0,
+        birimFiyat: Number(birimFiyat) || 0,
+        sale_price: Number(birimFiyat) || null,
+        birim_uretim_suresi_saat: birimSureSaat,
+        brut_agirlik_kg: Number(brutAgirlik) || 0,
+        net_agirlik_kg: Number(netAgirlik) || 0,
+        hurda_orani: Number(hurdaOrani) || 0,
+        current_stock: Math.max(0, parseInt(String(guncelStok), 10) || 0),
+        machines: makineList.filter((m) => !!makineFlags[m.id]).map((m) => ({ Id: m.id, machine_name: m.ad || '', details: '' })),
+      };
+      await createUrun(productData);
+      toast('Ürün eklendi');
+      onRefresh?.();
+      onBack();
+    } catch (err) {
+      toast(err?.message || 'Ürün eklenemedi');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const inputCls = `w-full p-3 rounded-lg border bg-transparent ${isDark ? 'border-gray-600 text-white placeholder-gray-500' : 'border-gray-300 text-gray-900 placeholder-gray-400'}`;
@@ -148,19 +171,6 @@ const UrunEkle = ({ isDark, onBack }) => {
           Analizlerin doğru yapılabilmesi için lütfen birim üretim süresini doğru ve eksiksiz girdiğinizden emin olunuz.
         </p>
 
-        <div>
-          <label className={`block text-sm font-medium mb-2 ${textSub}`}>Beklenen hurda miktarı</label>
-          <NumberStepperInput
-            value={beklenenHurdaMiktar}
-            onChange={(e) => setBeklenenHurdaMiktar(e.target.value)}
-            min={0}
-            step={0.01}
-            placeholder="Örn: 5 veya 2.5"
-            isDark={isDark}
-            className="w-full"
-          />
-        </div>
-
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className={`block text-sm font-medium mb-2 ${textSub}`}>Brüt ağırlık (kg)</label>
@@ -203,7 +213,7 @@ const UrunEkle = ({ isDark, onBack }) => {
             />
           </div>
           <div>
-            <label className={`block text-sm font-medium mb-2 ${textSub}`}>Günlük üretim</label>
+            <label className={`block text-sm font-medium mb-2 ${textSub}`}>Günlük üretim (kapasite)</label>
             <NumberStepperInput
               value={gunlukUretim}
               onChange={(e) => setGunlukUretim(e.target.value)}
@@ -216,34 +226,83 @@ const UrunEkle = ({ isDark, onBack }) => {
           </div>
         </div>
 
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className={`block text-sm font-medium mb-2 ${textSub}`}>Birim maliyet (₺)</label>
+            <NumberStepperInput
+              value={birimMaliyet}
+              onChange={(e) => setBirimMaliyet(e.target.value)}
+              min={0}
+              step={0.01}
+              placeholder="Örn: 12.50"
+              isDark={isDark}
+              className="w-full"
+            />
+          </div>
+          <div>
+            <label className={`block text-sm font-medium mb-2 ${textSub}`}>Satış fiyatı (₺)</label>
+            <NumberStepperInput
+              value={birimFiyat}
+              onChange={(e) => setBirimFiyat(e.target.value)}
+              min={0}
+              step={0.01}
+              placeholder="Örn: 18.00"
+              isDark={isDark}
+              className="w-full"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className={`block text-sm font-medium mb-2 ${textSub}`}>Güncel stok</label>
+            <NumberStepperInput
+              value={guncelStok}
+              onChange={(e) => setGuncelStok(e.target.value)}
+              min={0}
+              step={1}
+              placeholder="Örn: 0"
+              isDark={isDark}
+              className="w-full"
+            />
+          </div>
+          <div aria-hidden="true" />
+        </div>
+
         <div>
           <label className={`block text-sm font-medium mb-2 ${textSub}`}>Pres / Makine kullanımı</label>
           <div className={boxSectionCls}>
-            <div className={`${boxGridCls} grid-cols-2 sm:grid-cols-4`}>
-              {MAKINE_KOLONLARI.map(({ key, label }) => {
-                const checked = !!makineFlags[key];
-                return (
-                  <label key={key} className={checkboxLabelCls(checked)}>
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => toggleMakine(key)}
-                      className="rounded border-gray-500 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className={checkboxTextCls(checked)}>{label}</span>
-                  </label>
-                );
-              })}
-            </div>
+            {makineList.length === 0 ? (
+              <p className={`text-sm ${textSub}`}>Henüz makine eklenmemiş. Üretim Hattından makine ekleyebilirsiniz.</p>
+            ) : (
+              <div className={`${boxGridCls} grid-cols-2 sm:grid-cols-4`}>
+                {makineList.map((makine) => {
+                  const checked = !!makineFlags[makine.id];
+                  const label = makine.ad || makine.idKod || `Makine #${makine.id}`;
+                  return (
+                    <label key={makine.id} className={checkboxLabelCls(checked)}>
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleMakine(makine.id)}
+                        className="rounded border-gray-500 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className={checkboxTextCls(checked)}>{label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 
         <div className="flex gap-3 pt-2">
           <button
             type="submit"
-            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
+            disabled={submitting}
+            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold rounded-lg transition-colors"
           >
-            <Box size={18} /> Kaydet
+            <Box size={18} /> {submitting ? 'Kaydediliyor...' : 'Kaydet'}
           </button>
           <button
             type="button"

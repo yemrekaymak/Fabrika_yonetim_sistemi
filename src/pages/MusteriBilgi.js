@@ -1,18 +1,26 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, UserCircle, ShoppingCart } from 'lucide-react';
 import { getThemeClasses } from 'utils/theme';
-import { MOCK_SIPARISLER, MOCK_URUNLER } from 'constants/siparisData';
+import { getSiparisler } from 'services';
 
 const MusteriBilgi = ({ isDark, musteri, onBack }) => {
   const { bgCard, textTitle, textSub, borderCol } = getThemeClasses(isDark);
+  const [siparisler, setSiparisler] = useState([]);
 
-  const gecmisSiparisler = musteri?.idKod
-    ? MOCK_SIPARISLER.filter((s) => s.musteriId === musteri.idKod)
-    : [];
+  useEffect(() => {
+    getSiparisler().then(setSiparisler).catch(() => setSiparisler([]));
+  }, []);
+
+  const musteriAdiMatch = (s) => {
+    if (!musteri) return false;
+    const unvan = musteri.unvan || '';
+    const adSoyad = [musteri.ad, musteri.soyad].filter(Boolean).join(' ').trim();
+    return s.musteriAdi === unvan || s.musteriAdi === adSoyad || (unvan && s.musteriAdi?.includes(unvan));
+  };
+
+  const gecmisSiparisler = musteri ? siparisler.filter(musteriAdiMatch) : [];
 
   const formatTL = (n) => (n != null ? n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—');
-
-  const urunAdi = (urunId) => MOCK_URUNLER.find((u) => u.id === urunId)?.ad ?? urunId;
 
   if (!musteri) {
     return (
@@ -113,9 +121,9 @@ const MusteriBilgi = ({ isDark, musteri, onBack }) => {
                 {gecmisSiparisler.map((s) => {
                   const toplam = s.miktar * (s.birimFiyat ?? 0);
                   return (
-                    <tr key={s.no} className={isDark ? 'hover:bg-gray-700/30' : 'hover:bg-gray-50'}>
-                      <td className={`py-3 px-4 font-mono text-sm ${textSub}`}>{s.no}</td>
-                      <td className={`py-3 px-4 font-medium ${textTitle}`}>{urunAdi(s.urunId)}</td>
+                    <tr key={s.id ?? s.no ?? s.urunId + '-' + s.miktar} className={isDark ? 'hover:bg-gray-700/30' : 'hover:bg-gray-50'}>
+                      <td className={`py-3 px-4 font-mono text-sm ${textSub}`}>{s.no ?? `SIP-${s.id}`}</td>
+                      <td className={`py-3 px-4 font-medium ${textTitle}`}>{s.urunAdi ?? s.urunKodu ?? '—'}</td>
                       <td className={`py-3 px-4 ${textSub}`}>{s.miktar?.toLocaleString('tr-TR') ?? '—'}</td>
                       <td className={`py-3 px-4 ${textSub}`}>{formatTL(s.birimFiyat)} ₺</td>
                       <td className={`py-3 px-4 font-medium ${textTitle}`}>{formatTL(toplam)} ₺</td>

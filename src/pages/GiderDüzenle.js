@@ -2,23 +2,25 @@ import React, { useState } from 'react';
 import { ArrowLeft, TrendingDown, Plus, Pencil, Trash2, Check, Square } from 'lucide-react';
 import { getThemeClasses } from 'utils/theme';
 import { useToast } from 'contexts/ToastContext';
+import { createGider, deleteGider } from 'services';
 
 const inputCls = (isDark) =>
   `w-full p-3 rounded-lg border bg-transparent ${isDark ? 'border-gray-600 text-white placeholder-gray-500' : 'border-gray-300 text-gray-900 placeholder-gray-400'}`;
 
-const GiderDüzenle = ({ isDark, giderList = [], setGiderList, onBack }) => {
+const GiderDüzenle = ({ isDark, giderList = [], onRefresh, onBack }) => {
   const { toast } = useToast();
   const { bgCard, textTitle, textSub, borderCol } = getThemeClasses(isDark);
   const [view, setView] = useState('menu'); // 'menu' | 'ekle' | 'liste'
-  const [editingId, setEditingId] = useState(null);
+  const [editingOriginalKalem, setEditingOriginalKalem] = useState(null);
   const [kalem, setKalem] = useState('');
   const [tutar, setTutar] = useState('');
   const [tip, setTip] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   const sabitListe = giderList.filter((g) => g.tip === 'sabit');
   const degiskenListe = giderList.filter((g) => g.tip === 'degisken');
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
     const kalemTrim = kalem.trim();
     const tutarNum = parseFloat(tutar);
@@ -27,38 +29,43 @@ const GiderDüzenle = ({ isDark, giderList = [], setGiderList, onBack }) => {
       alert('Lütfen gider tipi seçin.');
       return;
     }
-
-    if (editingId) {
-      setGiderList(
-        giderList.map((g) =>
-          g.id === editingId ? { ...g, kalem: kalemTrim, tutar: tutarNum, tip } : g
-        )
-      );
-      setEditingId(null);
-      toast('Gider güncellendi');
-    } else {
-      const nextId = giderList.length ? Math.max(...giderList.map((g) => g.id)) + 1 : 1;
-      setGiderList([...giderList, { id: nextId, kalem: kalemTrim, tutar: tutarNum, tip }]);
-      toast('Gider kaydedildi');
+    setSubmitting(true);
+    try {
+      if (editingOriginalKalem) {
+        await deleteGider(editingOriginalKalem);
+      }
+      await createGider({ kalem: kalemTrim, tutar: tutarNum, tip });
+      toast(editingOriginalKalem ? 'Gider güncellendi' : 'Gider kaydedildi');
+      setEditingOriginalKalem(null);
+      setKalem('');
+      setTutar('');
+      setTip('');
+      setView('menu');
+      onRefresh?.();
+    } catch (err) {
+      toast(err?.message || 'İşlem başarısız');
+    } finally {
+      setSubmitting(false);
     }
-    setKalem('');
-    setTutar('');
-    setTip('');
-    setView('menu');
   };
 
   const handleEdit = (g) => {
-    setEditingId(g.id);
+    setEditingOriginalKalem(g.kalem);
     setKalem(g.kalem);
     setTutar(String(g.tutar));
     setTip(g.tip);
     setView('ekle');
   };
 
-  const handleRemove = (id, kalemAd) => {
+  const handleRemove = async (id, kalemAd) => {
     if (!window.confirm(`"${kalemAd}" gider kalemini listeden çıkarmak istiyor musunuz?`)) return;
-    setGiderList(giderList.filter((g) => g.id !== id));
-    toast('Gider silindi');
+    try {
+      await deleteGider(kalemAd);
+      toast('Gider silindi');
+      onRefresh?.();
+    } catch (err) {
+      toast(err?.message || 'Silinemedi');
+    }
   };
 
   const formatTL = (n) => (n != null ? n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—');
@@ -71,7 +78,7 @@ const GiderDüzenle = ({ isDark, giderList = [], setGiderList, onBack }) => {
           <ArrowLeft size={18} /> Listeye dön
         </button>
         {view !== 'menu' && (
-          <button type="button" onClick={() => { setView('menu'); setEditingId(null); setKalem(''); setTutar(''); setTip(''); }} className={linkCls}>
+          <button type="button" onClick={() => { setView('menu'); setEditingOriginalKalem(null); setKalem(''); setTutar(''); setTip(''); }} className={linkCls}>
             <ArrowLeft size={18} /> Geri
           </button>
         )}
@@ -85,7 +92,7 @@ const GiderDüzenle = ({ isDark, giderList = [], setGiderList, onBack }) => {
           <div className="flex flex-col sm:flex-row justify-center items-center gap-4 min-h-[280px]">
             <button
               type="button"
-              onClick={() => { setEditingId(null); setKalem(''); setTutar(''); setTip(''); setView('ekle'); }}
+              onClick={() => { setEditingOriginalKalem(null); setKalem(''); setTutar(''); setTip(''); setView('ekle'); }}
               className="flex items-center gap-3 px-8 py-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-lg shadow-lg transition-colors"
             >
               <Plus size={28} /> Gider Ekle
@@ -104,7 +111,7 @@ const GiderDüzenle = ({ isDark, giderList = [], setGiderList, onBack }) => {
       {view === 'ekle' && (
         <div className="max-w-md">
           <h2 className={`text-xl font-bold mb-6 border-b pb-2 ${textTitle} ${borderCol}`}>
-            {editingId ? 'Gideri Güncelle' : 'Yeni Gider Ekle'}
+            {editingOriginalKalem ? 'Gideri Güncelle' : 'Yeni Gider Ekle'}
           </h2>
           <form onSubmit={handleSave} className="space-y-5">
             <div>
@@ -181,13 +188,14 @@ const GiderDüzenle = ({ isDark, giderList = [], setGiderList, onBack }) => {
             <div className="flex gap-3 pt-2">
               <button
                 type="submit"
-                className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
+                disabled={submitting}
+                className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold rounded-lg transition-colors"
               >
-                <TrendingDown size={18} /> {editingId ? 'Güncelle' : 'Kaydet'}
+                <TrendingDown size={18} /> {submitting ? 'Kaydediliyor...' : (editingOriginalKalem ? 'Güncelle' : 'Kaydet')}
               </button>
               <button
                 type="button"
-                onClick={() => { setView('menu'); setEditingId(null); setKalem(''); setTutar(''); setTip(''); }}
+                onClick={() => { setView('menu'); setEditingOriginalKalem(null); setKalem(''); setTutar(''); setTip(''); }}
                 className={`px-5 py-2.5 font-semibold rounded-lg border transition-colors ${isDark ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-300 text-gray-700 hover:bg-gray-100'}`}
               >
                 İptal

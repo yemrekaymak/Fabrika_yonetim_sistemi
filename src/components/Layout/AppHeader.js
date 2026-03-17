@@ -18,6 +18,7 @@ const TAB_ICONS = {
   personel: Users,
   'personel-bilgi': Users,
   'personel-ekle': Users,
+  'personel-duzenle': Users,
 };
 
 const AppHeader = ({ activeTab, setActiveTab, isDark, toggleTheme, userName }) => {

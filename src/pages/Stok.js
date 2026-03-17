@@ -1,17 +1,12 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Sparkles, Search } from 'lucide-react';
+import { Pencil, Sparkles, Search, RefreshCw } from 'lucide-react';
 import { DepoBarChart } from 'charts';
 import { getThemeClasses } from 'utils/theme';
 
-const STOK_TABLOSU = [
-  { kod: 'STK-001', ad: 'Çelik Levha (5mm)', miktar: '450 Adet', miktarSayi: 450, kapasite: 800, kritik: 500, birimMaliyet: 72, birimFiyat: 85, durum: 'kritik', brutAgirlik: 6, netAgirlik: 5.7, hurdaOrani: 5, gunlukUretim: 120 },
-  { kod: 'STK-002', ad: 'Plastik Granül', miktar: '2500 kg', miktarSayi: 2500, kapasite: 4000, kritik: 1000, birimMaliyet: 9.5, birimFiyat: 12, durum: 'yeterli', brutAgirlik: 25, netAgirlik: 24, hurdaOrani: 4, gunlukUretim: 800 },
-  { kod: 'STK-003', ad: 'Endüstriyel Boya', miktar: '600 Lt', miktarSayi: 600, kapasite: 1000, kritik: 50, birimMaliyet: 38, birimFiyat: 45, durum: 'yeterli', brutAgirlik: 20, netAgirlik: 19.5, hurdaOrani: 2.5, gunlukUretim: 50 },
-];
-
-const Stok = ({ isDark, onUrunEkle }) => {
+const Stok = ({ isDark, stokList, stokLoading, onRefresh, onDuzenle }) => {
   const { bgCard, textTitle, textSub } = getThemeClasses(isDark);
   const [arama, setArama] = useState('');
+  const list = Array.isArray(stokList) ? stokList : [];
 
   const inputCls = isDark
     ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-500 focus:border-blue-500 focus:ring-blue-500/30'
@@ -19,26 +14,43 @@ const Stok = ({ isDark, onUrunEkle }) => {
 
   const filtrelenmisStok = useMemo(() => {
     const q = (arama || '').trim().toLowerCase();
-    if (!q) return STOK_TABLOSU;
-    return STOK_TABLOSU.filter((row) => {
+    if (!q) return list;
+    return list.filter((row) => {
       const kod = (row.kod || '').toLowerCase();
       const ad = (row.ad || '').toLowerCase();
       const miktar = (row.miktar || '').toLowerCase();
       return kod.includes(q) || ad.includes(q) || miktar.includes(q);
     });
-  }, [arama]);
+  }, [arama, list]);
 
   return (
     <div className="space-y-6">
       <div className={`p-6 rounded-xl shadow-sm border transition-colors duration-300 ${bgCard}`}>
         <h2 className={`text-lg font-bold mb-4 ${textTitle}`}>Depo Doluluk Oranları</h2>
-        <DepoBarChart isDark={isDark} />
+        <DepoBarChart
+          isDark={isDark}
+          data={Array.isArray(stokList) ? stokList.map((s) => ({ malzeme: s.ad, miktar: s.miktarSayi })) : []}
+        />
       </div>
 
       <div className={`p-6 rounded-xl shadow-sm border overflow-hidden transition-colors duration-300 ${bgCard}`}>
         <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
           <h2 className={`text-lg font-bold ${textTitle}`}>Depo Stok Durumu</h2>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {stokLoading && (
+              <span className={`text-sm ${textSub}`}>Yükleniyor...</span>
+            )}
+            {onRefresh && (
+              <button
+                type="button"
+                onClick={onRefresh}
+                disabled={stokLoading}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border transition-colors ${isDark ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-300 text-gray-700 hover:bg-gray-100'} disabled:opacity-50`}
+                title="Listeyi yenile"
+              >
+                <RefreshCw size={18} /> Yenile
+              </button>
+            )}
             <button
               type="button"
               onClick={() => {}}
@@ -53,10 +65,10 @@ const Stok = ({ isDark, onUrunEkle }) => {
             </button>
             <button
               type="button"
-              onClick={onUrunEkle}
+              onClick={onDuzenle}
               className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors"
             >
-              <Plus size={18} /> Ürün Ekle
+              <Pencil size={18} /> Düzenle
             </button>
           </div>
         </div>
@@ -96,19 +108,27 @@ const Stok = ({ isDark, onUrunEkle }) => {
               </tr>
             </thead>
             <tbody className={`divide-y ${isDark ? 'divide-gray-700' : 'divide-gray-100'}`}>
+              {filtrelenmisStok.length === 0 && !stokLoading && (
+                <tr>
+                  <td colSpan={11} className={`py-12 text-center ${textSub}`}>
+                    Henüz stok kaydı yok. API bağlıysa listeyi yüklemek için &quot;Yenile&quot;ye basın veya backend&apos;den veri geldiğinden emin olun.
+                  </td>
+                </tr>
+              )}
               {filtrelenmisStok.map((row) => {
                 const kritik = row.durum === 'kritik';
                 const durumBadgeCls = kritik
                   ? isDark ? 'bg-yellow-900/30 text-yellow-400 border-yellow-800' : 'bg-yellow-100 text-yellow-800 border-yellow-200'
                   : isDark ? 'bg-green-900/30 text-green-400 border-green-800' : 'bg-green-100 text-green-800 border-green-200';
-                const dolulukYuzde = row.kapasite > 0 ? Math.min(100, Math.round((row.miktarSayi / row.kapasite) * 100)) : 0;
+                const maxBar = row.kapasite > 0 ? row.kapasite : (row.kritik > 0 ? row.kritik : 1);
+                const dolulukYuzde = Math.min(100, Math.round((row.miktarSayi / maxBar) * 100));
                 const barRenk = dolulukYuzde >= 90 ? 'bg-red-500' : dolulukYuzde >= 70 ? 'bg-amber-500' : 'bg-blue-500';
                 const toplamMaliyet = (row.miktarSayi * row.birimMaliyet).toFixed(2);
                 const toplamFiyat = (row.miktarSayi * row.birimFiyat).toFixed(2);
 
                 return (
                   <tr
-                    key={row.kod}
+                    key={row.id ?? row.kod ?? Math.random()}
                     className={`transition duration-150 ${isDark ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50'}`}
                   >
                     <td className={`py-4 px-6 font-mono ${textSub}`}>{row.kod}</td>

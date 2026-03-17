@@ -2,42 +2,51 @@ import React, { useState } from 'react';
 import { ArrowLeft, Activity, Plus, Trash2, Search } from 'lucide-react';
 import { getThemeClasses } from 'utils/theme';
 import { useToast } from 'contexts/ToastContext';
+import { createMakine, deleteMakine } from 'services';
 
 const inputCls = (isDark) =>
   `w-full p-3 rounded-lg border bg-transparent ${isDark ? 'border-gray-600 text-white placeholder-gray-500' : 'border-gray-300 text-gray-900 placeholder-gray-400'}`;
 
-const MakineEkle = ({ isDark, makineList = [], setMakineList, onBack }) => {
+const MakineEkle = ({ isDark, makineList = [], onRefresh, onBack }) => {
   const { toast } = useToast();
+  const [submitting, setSubmitting] = useState(false);
   const { bgCard, textTitle, textSub, borderCol } = getThemeClasses(isDark);
   const [view, setView] = useState('menu'); // 'menu' | 'ekle' | 'sil'
   const [ad, setAd] = useState('');
-  const [idKod, setIdKod] = useState('');
   const [detay, setDetay] = useState('');
   const [silArama, setSilArama] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const adTrim = ad.trim();
     if (!adTrim) return;
-    const nextId = makineList.length ? Math.max(...makineList.map((m) => m.id)) + 1 : 1;
-    const yeni = {
-      id: nextId,
-      ad: adTrim,
-      idKod: idKod.trim() || `MK-${nextId}`,
-      detay: detay.trim() || null,
-    };
-    setMakineList([...makineList, yeni]);
-    setAd('');
-    setIdKod('');
-    setDetay('');
-    setView('menu');
-    toast('Makine eklendi');
+    setSubmitting(true);
+    try {
+      await createMakine({
+        ad: adTrim,
+        detay: detay.trim() || null,
+      });
+      setAd('');
+      setDetay('');
+      setView('menu');
+      toast('Makine eklendi');
+      onRefresh?.();
+    } catch (err) {
+      toast(err?.message || 'Makine eklenemedi');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleRemove = (id, makineAd) => {
+  const handleRemove = async (id, makineAd) => {
     if (!window.confirm(`"${makineAd}" makinesini listeden çıkarmak istiyor musunuz? Emin misiniz?`)) return;
-    setMakineList(makineList.filter((m) => m.id !== id));
-    toast('Makine listeden çıkarıldı');
+    try {
+      await deleteMakine(id);
+      toast('Makine listeden çıkarıldı');
+      onRefresh?.();
+    } catch (err) {
+      toast(err?.message || 'Makine çıkarılamadı');
+    }
   };
 
   const linkCls = `flex items-center gap-2 text-sm font-medium ${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`;
@@ -95,16 +104,6 @@ const MakineEkle = ({ isDark, makineList = [], setMakineList, onBack }) => {
               />
             </div>
             <div>
-              <label className={`block text-sm font-medium mb-2 ${textSub}`}>Makine ID</label>
-              <input
-                type="text"
-                value={idKod}
-                onChange={(e) => setIdKod(e.target.value)}
-                placeholder="Örn: 1001 veya MK-001 (boş bırakılırsa otomatik atanır)"
-                className={inputCls(isDark)}
-              />
-            </div>
-            <div>
               <label className={`block text-sm font-medium mb-2 ${textSub}`}>Detay (Opsiyonel)</label>
               <input
                 type="text"
@@ -117,9 +116,10 @@ const MakineEkle = ({ isDark, makineList = [], setMakineList, onBack }) => {
             <div className="flex gap-3 pt-2">
               <button
                 type="submit"
-                className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
+                disabled={submitting}
+                className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50"
               >
-                <Activity size={18} /> Kaydet
+                <Activity size={18} /> {submitting ? 'Kaydediliyor...' : 'Kaydet'}
               </button>
               <button
                 type="button"

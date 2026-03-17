@@ -2,35 +2,33 @@ import React, { useState, useMemo } from 'react';
 import { Users, Pencil, Info, Search } from 'lucide-react';
 import { getThemeClasses } from 'utils/theme';
 import ThemeDropdown from 'components/ThemeDropdown';
-import { DEPARTMAN_FILTRE_OPTIONS } from 'constants/departmanPozisyon';
+import { POZISYON_OPTIONS } from 'constants/departmanPozisyon';
 
 const Personel = ({ isDark, personelList = [], onPersonelEkle, onPersonelBilgi }) => {
   const { bgCard, textTitle, textSub, borderCol } = getThemeClasses(isDark);
   const [arama, setArama] = useState('');
-  const [departmanFiltre, setDepartmanFiltre] = useState('');
+  const [pozisyonFiltre, setPozisyonFiltre] = useState('');
 
   const filtrelenenListe = useMemo(() => {
     let liste = personelList;
-    if (departmanFiltre) {
-      liste = liste.filter((p) => (p.department || '') === departmanFiltre);
+    if (pozisyonFiltre) {
+      liste = liste.filter((p) => (p.pozisyon || '') === pozisyonFiltre);
     }
     const q = arama.trim().toLowerCase();
     if (!q) return liste;
     return liste.filter((p) => {
       const adSoyad = `${p.firstName || ''} ${p.lastName || ''}`.toLowerCase();
-      const departman = (p.department || '').toLowerCase();
       const pozisyon = (p.pozisyon || '').toLowerCase();
       const telefon = (p.telefon || '').replace(/\s/g, '');
       const tc = (p.tcKimlikNo || '').toLowerCase();
       return (
         adSoyad.includes(q) ||
-        departman.includes(q) ||
         pozisyon.includes(q) ||
         telefon.includes(q) ||
         tc.includes(q)
       );
     });
-  }, [personelList, arama, departmanFiltre]);
+  }, [personelList, arama, pozisyonFiltre]);
 
   const inputCls = isDark
     ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-500 focus:border-blue-500 focus:ring-blue-500/30'
@@ -63,7 +61,7 @@ const Personel = ({ isDark, personelList = [], onPersonelEkle, onPersonelBilgi }
               type="search"
               value={arama}
               onChange={(e) => setArama(e.target.value)}
-              placeholder="Ad, soyad, departman veya pozisyona göre ara..."
+              placeholder="Ad, soyad veya pozisyona göre ara..."
               className={`w-full pl-10 pr-4 py-2.5 rounded-lg border outline-none focus:ring-2 transition-colors ${inputCls}`}
               autoComplete="off"
             />
@@ -71,17 +69,17 @@ const Personel = ({ isDark, personelList = [], onPersonelEkle, onPersonelBilgi }
         </div>
         <div className="w-full sm:w-52 flex-shrink-0">
           <ThemeDropdown
-            label="Departmana göre filtrele"
-            options={DEPARTMAN_FILTRE_OPTIONS}
-            value={departmanFiltre}
-            onChange={setDepartmanFiltre}
+            label="Pozisyona göre filtrele"
+            options={[{ id: '', ad: 'Tüm pozisyonlar' }, ...POZISYON_OPTIONS]}
+            value={pozisyonFiltre}
+            onChange={setPozisyonFiltre}
             renderLabel={(o) => o.ad}
-            placeholder="Tüm departmanlar"
+            placeholder="Tüm pozisyonlar"
             isDark={isDark}
           />
         </div>
       </div>
-      {(arama.trim() || departmanFiltre) && (
+      {(arama.trim() || pozisyonFiltre) && (
         <p className={`mb-4 text-sm ${textSub}`}>
           {filtrelenenListe.length} personel listeleniyor
         </p>
@@ -89,7 +87,7 @@ const Personel = ({ isDark, personelList = [], onPersonelEkle, onPersonelBilgi }
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filtrelenenListe.length === 0 ? (
           <p className={`col-span-full text-center py-8 ${textSub}`}>
-            {arama.trim() || departmanFiltre ? 'Arama veya filtreye uygun personel bulunamadı.' : 'Listede personel yok.'}
+            {arama.trim() || pozisyonFiltre ? 'Arama veya filtreye uygun personel bulunamadı.' : 'Listede personel yok.'}
           </p>
         ) : (
           filtrelenenListe.map((p) => (
@@ -103,7 +101,7 @@ const Personel = ({ isDark, personelList = [], onPersonelEkle, onPersonelBilgi }
               </div>
               <div className="min-w-0">
                 <div className={`font-bold ${textTitle}`}>{p.firstName} {p.lastName}</div>
-                <div className={`text-sm ${textSub}`}>{p.department || '—'}</div>
+                <div className={`text-sm ${textSub}`}>{p.pozisyon || '—'}</div>
               </div>
             </div>
             <button

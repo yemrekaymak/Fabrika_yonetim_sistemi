@@ -6,8 +6,7 @@ import RegisterScreen from 'components/RegisterScreen/RegisterScreen';
 import LoadingScreen from 'components/LoadingScreen/LoadingScreen';
 import { MainContent } from 'components/Layout';
 import { ToastProvider } from 'contexts/ToastContext';
-
-const DEFAULT_USER_NAME = 'Yönetici';
+import { getStoredUser, logout as apiLogout } from 'services/authService';
 
 const REMEMBER_KEY = 'fabrika_remember';
 const THEME_KEY = 'fabrika_theme';
@@ -21,10 +20,17 @@ function getInitialTheme() {
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(() => typeof window !== 'undefined' && !!localStorage.getItem(REMEMBER_KEY));
   const [authView, setAuthView] = useState('login');
+  const [registerSuccessMessage, setRegisterSuccessMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStartTime, setLoadingStartTime] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isDark, setIsDark] = useState(getInitialTheme);
+  const [userName, setUserName] = useState(() => {
+    const u = getStoredUser();
+    if (!u) return '';
+    const full = [u.ad, u.soyad].filter(Boolean).join(' ').trim();
+    return full || u.email || '';
+  });
 
   const MIN_LOADING_MS = 400; // Çok hızlı PC'de yükleme ekranının çok kısa görünmesini engeller
 
@@ -60,23 +66,26 @@ function App() {
   };
 
   const handleLogin = (rememberMe) => {
+    setRegisterSuccessMessage('');
     if (rememberMe) localStorage.setItem(REMEMBER_KEY, '1');
     else localStorage.removeItem(REMEMBER_KEY);
+    const u = getStoredUser();
+    const full = u ? [u.ad, u.soyad].filter(Boolean).join(' ').trim() : '';
+    setUserName(full || u?.email || '');
     setLoadingStartTime(Date.now());
     setIsLoading(true);
     setIsLoggedIn(true);
   };
 
   const handleRegisterSuccess = () => {
-    localStorage.removeItem(REMEMBER_KEY);
-    setLoadingStartTime(Date.now());
-    setIsLoading(true);
-    setIsLoggedIn(true);
+    setRegisterSuccessMessage('Hesabınız oluşturuldu. Giriş yapabilirsiniz.');
     setAuthView('login');
   };
 
   const handleLogout = () => {
     localStorage.removeItem(REMEMBER_KEY);
+    setUserName('');
+    try { apiLogout(); } catch {}
     setIsLoading(true);
     setTimeout(() => {
       setIsLoggedIn(false);
@@ -97,7 +106,8 @@ function App() {
     return (
       <LoginScreen
         onLogin={handleLogin}
-        onGoToRegister={() => setAuthView('register')}
+        onGoToRegister={() => { setRegisterSuccessMessage(''); setAuthView('register'); }}
+        successMessage={registerSuccessMessage}
       />
     );
   }
@@ -111,7 +121,7 @@ function App() {
         setActiveTab={setActiveTab}
         isDark={isDark}
         toggleTheme={toggleTheme}
-        userName={DEFAULT_USER_NAME}
+        userName={userName}
         onContentReady={isLoading ? handleContentReady : undefined}
       />
       {isLoading && (

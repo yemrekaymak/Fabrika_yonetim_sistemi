@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
 
 /** Tema uyumlu, yumuşak geçişli dropdown (Sipariş müşteri/ürün ve Personel departman seçimi) */
-const ThemeDropdown = ({ options, value, onChange, renderLabel, placeholder, isDark, label }) => {
+const ThemeDropdown = ({ options, value, onChange, renderLabel, placeholder, isDark, label, disabled, className }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -18,6 +18,7 @@ const ThemeDropdown = ({ options, value, onChange, renderLabel, placeholder, isD
   const triggerCls = isDark
     ? 'bg-gray-700 border-gray-600 text-white hover:border-gray-500 focus:ring-blue-500/40'
     : 'bg-white border-gray-300 text-gray-800 hover:border-gray-400 focus:ring-blue-400/30';
+  const disabledCls = disabled ? 'opacity-60 cursor-not-allowed pointer-events-none' : '';
   const panelCls = isDark
     ? 'bg-gray-800 border-gray-600 shadow-xl shadow-black/20'
     : 'bg-white border-gray-200 shadow-xl shadow-gray-200/80';
@@ -27,7 +28,7 @@ const ThemeDropdown = ({ options, value, onChange, renderLabel, placeholder, isD
   const optionActiveCls = isDark ? 'bg-blue-900/40 text-blue-300' : 'bg-blue-50 text-blue-800';
 
   return (
-    <div ref={ref} className="relative w-full">
+    <div ref={ref} className={`relative w-full ${className ?? ''}`}>
       {label && (
         <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
           {label}
@@ -35,8 +36,9 @@ const ThemeDropdown = ({ options, value, onChange, renderLabel, placeholder, isD
       )}
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
-        className={`w-full min-w-0 px-3 py-2.5 rounded-lg border text-left flex items-center justify-between transition-all duration-200 outline-none focus:ring-2 ${triggerCls}`}
+        disabled={disabled}
+        onClick={() => !disabled && setOpen((o) => !o)}
+        className={`w-full min-w-0 px-3 py-2.5 rounded-lg border text-left flex items-center justify-between transition-all duration-200 outline-none focus:ring-2 ${triggerCls} ${disabledCls}`}
       >
         <span className="truncate">{selected ? renderLabel(selected) : placeholder}</span>
         <ChevronDown
