@@ -13,17 +13,25 @@ var port = Environment.GetEnvironmentVariable("PORT");
 if (!string.IsNullOrEmpty(port))
     builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
-// --- 1. VERİTABANI ---
-// Lokalde verilerin kalıcı olması için DB her zaman proje klasöründe (göreli yol yerine sabit yol)
-var dbPath = Path.Combine(builder.Environment.ContentRootPath, "fabrika.db");
-var connectionString = builder.Configuration.GetConnectionString("SqliteConnection") ?? $"Data Source={dbPath}";
-builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlite(connectionString));
+// --- 1. VERİTABANI (PostgreSQL) ---
+// Lokalde: appsettings.Development.json'deki connection string
+// Render'da: DATABASE_URL env variable otomatik okunur veya appsettings.json kullanılır
+var connectionString = builder.Configuration.GetConnectionString("PostgresConnection");
+var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+if (string.IsNullOrEmpty(connectionString) && !string.IsNullOrEmpty(databaseUrl))
+{
+    // Render'da DATABASE_URL formatını düzenle (npgsql uyumlu)
+    var dbUri = new Uri(databaseUrl);
+    var userInfo = dbUri.UserInfo.Split(':');
+    connectionString = $"Host={dbUri.Host};Port={dbUri.Port};Username={userInfo[0]};Password={userInfo[1]};Database={dbUri.LocalPath.TrimStart('/')};SSL Mode=Require;Trust Server Certificate=true;";
+}
+builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
 
 // --- 2. AUTHENTICATION (401 HATALARINA SON) ---
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options => {
         options.TokenValidationParameters = new TokenValidationParameters {
-            ValidateIssuer = false, 
+            ValidateIssuer = false,
             ValidateAudience = false,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,

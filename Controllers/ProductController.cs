@@ -93,7 +93,7 @@ public class ProductController : ControllerBase
 
             return Ok(product);
         }
-        catch (Microsoft.Data.Sqlite.SqliteException ex)
+        catch (DbUpdateException ex)
         {
             return StatusCode(500, new { Mesaj = "Veritabanı hatası. Tablo şeması güncel olmayabilir.", Detay = ex.Message });
         }
