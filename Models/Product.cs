@@ -7,8 +7,6 @@ namespace FabrikaBackend.Models;
 
 public class Product
 {
-    // ID silindiği için bir alanı Key (Anahtar) yapmamız lazım. 
-    // Ürün kodu genellikle benzersizdir, o yüzden onu Key yapıyoruz.
     [Key]
     [JsonPropertyName("urun_kodu")]
     public string UrunKodu { get; set; } = string.Empty;

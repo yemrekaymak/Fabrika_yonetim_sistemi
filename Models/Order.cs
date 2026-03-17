@@ -7,17 +7,17 @@ namespace FabrikaBackend.Models;
 public class Order
 {
     [Key]
-    [JsonPropertyName("id")]
-    public string Id { get; set; }
+    [JsonPropertyName("order_id")]
+    public string Id { get; set; } = string.Empty;
 
     [JsonPropertyName("product_id")]
-    public string ProductId { get; set; }
+    public string ProductId { get; set; } = string.Empty;
 
     [JsonPropertyName("musteri_adi")]
-    public string? MusteriAdi { get; set; }
+    public string MusteriAdi { get; set; } = string.Empty;
 
     [JsonPropertyName("urun_kodu")]
-    public string? UrunKodu { get; set; }
+    public string UrunKodu { get; set; } = string.Empty;
 
     [JsonPropertyName("urun_adi")]
     public string? UrunAdi { get; set; }
