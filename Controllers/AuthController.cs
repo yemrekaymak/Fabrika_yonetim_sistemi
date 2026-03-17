@@ -62,17 +62,19 @@ public class AuthController : ControllerBase
 
         var tokenHandler = new JwtSecurityTokenHandler();
         var keyString = _configuration["Jwt:Key"] ?? "CokGizliAnahtar123!";
-        var key = Encoding.UTF8.GetBytes(keyString); 
-        
+        var key = Encoding.UTF8.GetBytes(keyString);
+
         var tokenDescriptor = new SecurityTokenDescriptor
         {
             Subject = new ClaimsIdentity(new[]
             {
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim(ClaimTypes.Name, user.Email),
                 new Claim(ClaimTypes.Email, user.Email),
-                // HATA DÜZELTİLDİ: Role veritabanında yoksa buraya sabit "User" yazıyoruz
-                new Claim("role", "User"), 
-                new Claim("company_id", "1") 
+                // Role veritabanında olmadığı için şimdilik sabit User
+                new Claim("role", "User"),
+                // company_id'yi kullanıcı ID'si ile taşıyoruz ki herkes kendi verisini görsün
+                new Claim("company_id", user.Id.ToString())
             }),
             Expires = DateTime.UtcNow.AddHours(3),
             Issuer = _configuration["Jwt:Issuer"],
@@ -83,11 +85,12 @@ public class AuthController : ControllerBase
         var token = tokenHandler.CreateToken(tokenDescriptor);
         var jwtString = tokenHandler.WriteToken(token);
 
-        return Ok(new { 
-            mesaj = "Başarıyla giriş yaptınız!", 
-            email = user.Email, 
+        return Ok(new
+        {
+            mesaj = "Başarıyla giriş yaptınız!",
+            email = user.Email,
             rol = "User", // Frontend patlamasın diye sabit değer döndürüyoruz
-            token = jwtString 
+            token = jwtString
         });
     }
 }

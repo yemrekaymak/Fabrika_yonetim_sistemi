@@ -11,7 +11,7 @@ public class Order
     public int Id { get; set; }
 
     [JsonPropertyName("product_id")]
-    public int ProductId { get; set; }
+    public string ProductId { get; set; }
 
     [JsonPropertyName("musteri_adi")]
     public string? MusteriAdi { get; set; }
