@@ -8,7 +8,7 @@ public class Order
 {
     [Key]
     [JsonPropertyName("id")]
-    public int Id { get; set; }
+    public string Id { get; set; }
 
     [JsonPropertyName("product_id")]
     public string ProductId { get; set; }
