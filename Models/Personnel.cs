@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
@@ -14,7 +14,7 @@ namespace FabrikaBackend.Models
         [JsonPropertyName("soyad")]
         public string LastName { get; set; } = string.Empty;
 
-        [Key] // Id sildiğimiz için TC'yi anahtar yapıyoruz ki sistem karışmasın
+        [Key]
         [Required(ErrorMessage = "TC Kimlik No zorunludur.")]
         [StringLength(11, MinimumLength = 11, ErrorMessage = "TC Kimlik No tam 11 haneli olmalıdır.")]
         [RegularExpression("^[0-9]*$", ErrorMessage = "TC Kimlik No sadece rakamlardan oluşmalıdır.")]
@@ -27,19 +27,23 @@ namespace FabrikaBackend.Models
         [JsonPropertyName("telefon")]
         public string PhoneNumber { get; set; } = string.Empty;
 
+        [JsonPropertyName("personel_id")]
+        public string PersonelCode { get; set; } = string.Empty;
+
+        [JsonPropertyName("departman")]
+        public string Department { get; set; } = string.Empty;
+
         [JsonPropertyName("pozisyon")]
         public string Position { get; set; } = string.Empty;
 
         [JsonPropertyName("maas")]
         public decimal Salary { get; set; }
 
-        // --- YENİ EKLENEN ALANLAR ---
         [JsonPropertyName("yol_ucreti")]
         public decimal TransportAllowance { get; set; }
 
         [JsonPropertyName("yemek_ucreti")]
         public decimal MealAllowance { get; set; }
-        // ----------------------------
 
         [JsonPropertyName("ise_giris_tarihi")]
         public DateTime HireDate { get; set; }
@@ -74,5 +78,15 @@ namespace FabrikaBackend.Models
         [JsonPropertyName("acil_durum_tel")]
         public string EmergencyContactPhone { get; set; } = string.Empty;
 
+        [JsonPropertyName("is_active")]
+        public bool IsActive { get; set; } = true;
+
+        [JsonPropertyName("created_at")]
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        [JsonPropertyName("absenteeism_rate")]
+        public double AbsenteeismRate => TotalAnnualLeave > 0
+            ? Math.Round((double)AbsenteeismDays / TotalAnnualLeave, 4)
+            : 0;
     }
 }

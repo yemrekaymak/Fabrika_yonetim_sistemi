@@ -1,8 +1,9 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using FabrikaBackend.Data;
 using FabrikaBackend.Models;
 using FabrikaBackend.DTOs;
+using FabrikaBackend.Services;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.IdentityModel.Tokens;
@@ -40,24 +41,31 @@ public class AuthController : ControllerBase
         var newUser = new User
         {
             Email = email,
-            Password = password // Gerçek hayatta şifrelenmeli!
+            Password = PasswordService.HashPassword(password)
         };
 
         _context.Users.Add(newUser);
         await _context.SaveChangesAsync();
 
-        return Ok(new { Mesaj = "Kayıt başarılı!", Kullanici = newUser });
+        return Ok(new { Mesaj = "Kayıt başarılı!", Email = newUser.Email });
     }
 
     [HttpPost("login")]
     public async Task<IActionResult> Login(UserLoginDto request)
     {
         var email = (request.Email ?? "").Trim();
-        var user = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Email == email);
+        var password = request.Password ?? "";
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
 
-        if (user == null || user.Password != (request.Password ?? ""))
+        if (user == null || !PasswordService.VerifyPassword(user.Password, password, out var needsRehash))
         {
             return BadRequest(new { Mesaj = "Email veya şifre hatalı!" });
+        }
+
+        if (needsRehash)
+        {
+            user.Password = PasswordService.HashPassword(password);
+            await _context.SaveChangesAsync();
         }
 
         var tokenHandler = new JwtSecurityTokenHandler();
@@ -71,9 +79,7 @@ public class AuthController : ControllerBase
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim(ClaimTypes.Name, user.Email),
                 new Claim(ClaimTypes.Email, user.Email),
-                // Role veritabanında olmadığı için şimdilik sabit User
                 new Claim("role", "User"),
-                // company_id'yi kullanıcı ID'si ile taşıyoruz ki herkes kendi verisini görsün
                 new Claim("company_id", user.Id.ToString())
             }),
             Expires = DateTime.UtcNow.AddHours(3),
@@ -89,7 +95,7 @@ public class AuthController : ControllerBase
         {
             mesaj = "Başarıyla giriş yaptınız!",
             email = user.Email,
-            rol = "User", // Frontend patlamasın diye sabit değer döndürüyoruz
+            rol = "User",
             token = jwtString
         });
     }

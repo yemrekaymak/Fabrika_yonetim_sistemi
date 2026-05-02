@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using FabrikaBackend.Data;
 using FabrikaBackend.Models;
 using Microsoft.EntityFrameworkCore;
@@ -53,6 +53,7 @@ public class PersonnelController : ControllerBase
         existing.FirstName = personnel.FirstName;
         existing.LastName = personnel.LastName;
         existing.PhoneNumber = personnel.PhoneNumber;
+        existing.Department = personnel.Department;
         existing.Position = personnel.Position;
         existing.Salary = personnel.Salary;
         existing.TransportAllowance = personnel.TransportAllowance;

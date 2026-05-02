@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using FabrikaBackend.Data;
 using FabrikaBackend.Models;
-using System.Net.Http.Json;
+using FabrikaBackend.Services;
 
 namespace FabrikaBackend.Controllers;
 
@@ -12,6 +12,11 @@ public class OrderCreateRequest
     public string UrunKodu { get; set; } = string.Empty;
     public string UrunAdi { get; set; } = string.Empty;
     public int Miktar { get; set; }
+    public string CustomerName { get; set; } = string.Empty;
+    public string ProductCode { get; set; } = string.Empty;
+    public string ProductId { get; set; } = string.Empty;
+    public int Quantity { get; set; }
+    public double? SalePrice { get; set; }
 }
 
 public class OrderStatusUpdateRequest
@@ -25,12 +30,12 @@ public class OrderStatusUpdateRequest
 public class OrderController : ControllerBase
 {
     private readonly AppDbContext _context;
-    private readonly HttpClient _httpClient;
+    private readonly AiIntegrationService _aiIntegrationService;
 
-    public OrderController(AppDbContext context, HttpClient httpClient)
+    public OrderController(AppDbContext context, AiIntegrationService aiIntegrationService)
     {
         _context = context;
-        _httpClient = httpClient;
+        _aiIntegrationService = aiIntegrationService;
     }
 
     [HttpGet("tum-siparis-listesi")]
@@ -55,7 +60,6 @@ public class OrderController : ControllerBase
     [HttpPut("siparis-tum-verileri-duzelt/{id}")]
     public async Task<ActionResult<Order>> PutOrder(string id, Order order)
     {
-        // 58. satırdaki hata düzeltildi: Parametre id ile nesne içindeki id karşılaştırılıyor
         if (id != order.Id) return BadRequest(new { Mesaj = "ID uyuşmazlığı!" });
 
         var existing = await _context.Orders.FindAsync(id);
@@ -79,51 +83,71 @@ public class OrderController : ControllerBase
     {
         var order = await _context.Orders.FindAsync(id);
         if (order == null) return NotFound(new { Mesaj = "Sipariş bulunamadı." });
-        
+
         if (!string.IsNullOrEmpty(request.Status)) order.Status = request.Status;
-        
+
         await _context.SaveChangesAsync();
         return Ok(order);
     }
 
     [HttpPost("yeni-siparis-olustur")]
-    public async Task<ActionResult<Order>> CreateOrder(OrderCreateRequest request)
+    public async Task<ActionResult<Order>> CreateOrder(OrderCreateRequest request, CancellationToken cancellationToken)
     {
-        Product? product = null;
-        if (!string.IsNullOrEmpty(request.UrunKodu))
-            product = await _context.Products.FindAsync(request.UrunKodu);
-            
-        if (product == null && !string.IsNullOrEmpty(request.UrunAdi))
-            product = await _context.Products.FirstOrDefaultAsync(p => p.UrunAdi == request.UrunAdi);
+        var customerName = FirstNonEmpty(request.MusteriAdi, request.CustomerName);
+        var productCode = FirstNonEmpty(request.UrunKodu, request.ProductCode, request.ProductId);
+        var productName = FirstNonEmpty(request.UrunAdi);
+        var quantity = request.Miktar > 0 ? request.Miktar : request.Quantity;
 
-        if (product == null) return NotFound(new { Mesaj = "Hata: Ürün bulunamadı!" });
+        if (string.IsNullOrWhiteSpace(customerName))
+            return BadRequest(new { Mesaj = "Müşteri adı zorunludur." });
+
+        if (quantity <= 0)
+            return BadRequest(new { Mesaj = "Miktar sıfırdan büyük olmalıdır." });
+
+        Product? product = null;
+        if (!string.IsNullOrWhiteSpace(productCode))
+            product = await _context.Products.FindAsync(new object?[] { productCode }, cancellationToken);
+
+        if (product == null && !string.IsNullOrWhiteSpace(productName))
+            product = await _context.Products.FirstOrDefaultAsync(p => p.UrunAdi == productName, cancellationToken);
+
+        if (product == null) return NotFound(new { Mesaj = "Ürün bulunamadı." });
 
         double birimMaliyet = product.BaseCost;
-        double birimFiyat = product.SalePrice ?? product.BaseCost;
-        double estimatedHours = (product.BirimUretimSuresiSaat ?? 0) * request.Miktar;
+        double birimFiyat = request.SalePrice is > 0 ? request.SalePrice.Value : product.SalePrice ?? product.BaseCost;
+        double estimatedHours = (product.BirimUretimSuresiSaat ?? 0) * quantity;
 
         var newOrder = new Order
         {
-            // Veritabanı otomatik ID üretmiyorsa GUID oluşturuyoruz
-            Id = Guid.NewGuid().ToString(), 
-            ProductId = request.UrunKodu, // Ürünün kendi ID'sini atıyoruz
+            Id = await CreateNextOrderIdAsync(cancellationToken),
+            ProductId = product.UrunKodu,
             UrunKodu = product.UrunKodu,
             UrunAdi = product.UrunAdi,
-            MusteriAdi = request.MusteriAdi,
-            Quantity = request.Miktar,
-            EstimatedDays = Math.Round(estimatedHours / 8.0, 2),
-            TotalCost = birimMaliyet * request.Miktar,
+            MusteriAdi = customerName,
+            Quantity = quantity,
+            EstimatedDays = ProductionCapacityEstimator.CalculateEstimatedDays(product, quantity),
+            TotalCost = birimMaliyet * quantity,
             SalePrice = birimFiyat,
             Status = "pending",
             CreatedAt = DateTime.UtcNow
         };
 
         _context.Orders.Add(newOrder);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(cancellationToken);
 
-        // AI Analizi tetikleyici
-        try { await _httpClient.PostAsJsonAsync("http://127.0.0.1:8000/api/ai/analyze", new { mode = "risk_analysis" }); }
-        catch { Console.WriteLine("AI servisine ulaşılamadı."); }
+        try
+        {
+            var factoryState = await AiStateBuilder.BuildFactoryStateAsync(_context, cancellationToken);
+            await _aiIntegrationService.PostAnalyzeAsync(new
+            {
+                mode = "risk_analysis",
+                factory_state = factoryState
+            }, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"AI servisine ulaşılamadı: {ex.Message}");
+        }
 
         return Ok(newOrder);
     }
@@ -138,5 +162,25 @@ public class OrderController : ControllerBase
         await _context.SaveChangesAsync();
 
         return Ok(new { Mesaj = "Sipariş silindi." });
+    }
+
+    private static string FirstNonEmpty(params string[] values)
+    {
+        return values.FirstOrDefault(v => !string.IsNullOrWhiteSpace(v))?.Trim() ?? string.Empty;
+    }
+
+    private async Task<string> CreateNextOrderIdAsync(CancellationToken cancellationToken)
+    {
+        var ids = await _context.Orders
+            .AsNoTracking()
+            .Select(order => order.Id)
+            .ToListAsync(cancellationToken);
+
+        var nextNumericId = ids
+            .Select(id => int.TryParse(id, out var parsed) ? parsed : 0)
+            .DefaultIfEmpty(0)
+            .Max() + 1;
+
+        return nextNumericId.ToString();
     }
 }

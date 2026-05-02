@@ -1,16 +1,20 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using FabrikaBackend.Data;
 
 namespace FabrikaBackend.Services;
 
-/// <summary>
-/// .NET veritabanındaki sipariş, ürün, personel ve stok verisinden
-/// AI servisine gönderilecek factory_state JSON'unu üretir.
-/// </summary>
 public static class AiStateBuilder
 {
     private const double AylikKapasiteSaat = 200.0;
-    private static readonly string[] ActiveStatuses = { "pending", "Beklemede", "Onaylandı", "Üretimde" };
+    private static readonly string[] ActiveStatuses =
+    {
+        "pending",
+        "Beklemede",
+        "Onaylandı",
+        "approved",
+        "Üretimde",
+        "in_production"
+    };
 
     public static async Task<object> BuildFactoryStateAsync(AppDbContext context, CancellationToken ct = default)
     {

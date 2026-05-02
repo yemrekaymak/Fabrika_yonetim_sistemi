@@ -34,6 +34,9 @@ public class Product
     [JsonPropertyName("hurda_orani")]
     public double HurdaOrani { get; set; }
 
+    [JsonPropertyName("gunluk_uretim")]
+    public int GunlukUretim { get; set; }
+
     [JsonPropertyName("base_cost")]
     public double BaseCost { get; set; }
 

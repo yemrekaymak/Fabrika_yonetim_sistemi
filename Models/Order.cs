@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
 
 namespace FabrikaBackend.Models;
@@ -34,9 +35,22 @@ public class Order
     [JsonPropertyName("sale_price")]
     public double SalePrice { get; set; }
 
+    [JsonPropertyName("margin_percent")]
+    public double MarginPercent { get; set; }
+
     [JsonPropertyName("status")]
     public string Status { get; set; } = "pending";
 
+    [JsonPropertyName("delivery_date")]
+    public DateTime? DeliveryDate { get; set; }
+
+    [JsonPropertyName("notes")]
+    public string Notes { get; set; } = string.Empty;
+
     [JsonPropertyName("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    [NotMapped]
+    [JsonPropertyName("profit")]
+    public double Profit => SalePrice - TotalCost;
 }
